@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { loadThemes } from "../src/catalog.js";
+import { loadThemes, packageMetadata } from "../src/catalog.js";
 import { buildFrame, exportEverywhere, filterThemes, openDashboard } from "../src/dashboard.js";
 import { displayWidth, stripAnsi } from "../src/ui/ansi.js";
 
@@ -50,7 +50,7 @@ test("the deck states each thing once and ends with its controls", () => {
 
   const occurrences = (pattern) => plain.match(pattern)?.length ?? 0;
   assert.equal(occurrences(/PROFILE/g), 1, "the profile selector is titled in exactly one place");
-  assert.equal(occurrences(/v0\.3\.0/g), 1, "the release version is stated once");
+  assert.equal(occurrences(new RegExp(`v${packageMetadata.version.replaceAll(".", "\\.")}`, "g")), 1, "the release version is stated once");
   assert.doesNotMatch(plain, /Wallpaper included/, "a note that is true of every theme is not information");
   assert.doesNotMatch(plain, /Selected:/, "the marker and the pane title already say what is selected");
 

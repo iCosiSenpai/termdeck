@@ -4,6 +4,8 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-07
+
 ### Termdeck
 
 - Rebuilt the Control Center around stating each thing once: removed the duplicated Terminal Profile heading, the second release version, the wallpaper note that was true of every theme, the two self-evident column titles, and the selection echo in the status row.
@@ -86,6 +88,7 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 - Initial Ghostty theme engine.
 - Added seven palettes, four working profiles, safe config management, and five export targets.
 
+[0.4.0]: https://github.com/iCosiSenpai/termdeck/releases/tag/v0.4.0
 [0.3.0]: https://github.com/iCosiSenpai/termdeck/releases/tag/v0.3.0
 [0.2.0]: https://github.com/iCosiSenpai/termdeck/releases/tag/v0.2.0
 [0.1.0]: https://github.com/iCosiSenpai/termdeck/commit/f7dc075
