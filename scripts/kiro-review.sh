@@ -67,6 +67,7 @@ echo "Kiro is reviewing ${review_label}; the verified report will print when com
 NO_COLOR=1 KIRO_LOG_NO_COLOR=1 kiro-cli chat \
   --agent termdeck-reviewer \
   --no-interactive \
+  --effort max \
   --trust-tools=read \
   "$review_prompt" < /dev/null > "$review_output"
 review_status=$?

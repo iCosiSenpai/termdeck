@@ -22,6 +22,11 @@ test("Kiro checkpoint reviewer is constrained to read-only tools", () => {
   assert.deepEqual(denied, new Set(["fs_write", "shell", "mcp", "subagent"]));
 });
 
+test("Kiro reviewer is pinned to Opus 5 at max effort", () => {
+  assert.equal(agent.model, "claude-opus-5");
+  assert.match(reviewScript, /--effort max/);
+});
+
 test("Kiro reviewer prompt exists beside its agent configuration", () => {
   assert.match(agent.prompt, /^file:\/\/\.\//);
   assert.match(reviewerPrompt, /AGENTS\.md/);

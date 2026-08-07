@@ -16,6 +16,8 @@ Kiro automatically discovers the workspace agent in `.kiro/agents/` when started
 kiro-cli --agent termdeck-reviewer
 ```
 
+The reviewer is pinned to `claude-opus-5`; the automated wrapper explicitly requests `max` reasoning effort so project reviews do not depend on global model preferences. This is a deliberate hard requirement: Kiro fails the review instead of silently falling back when the model is unavailable to the active account.
+
 ## Review a checkpoint
 
 Authenticate locally once with `kiro-cli login`. Kiro CLI can then reuse that session for interactive and non-interactive reviews. Credentials remain owned by Kiro and must never be committed or placed in a project file.
