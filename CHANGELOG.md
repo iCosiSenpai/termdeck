@@ -16,6 +16,7 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 - Led the footer with the action, moved the power keys to the `?` guide on narrow terminals, and put the catalog filter query and its match count directly above the results they produced.
 - Kept every theme name readable at every terminal size by sizing the catalog on width alone, instead of squeezing it whenever the terminal was merely short.
 - Credited each Special Edition's rights holder in the theme pane instead of repeating the property its description already names.
+- Documented that Ghostty is the only terminal Termdeck configures automatically, and gave each of the other six the one step that installs its exported package.
 - Added a background update check on launch: the Control Center alerts when a newer Termdeck release is published or the applied theme has fallen behind the catalog, and installs or re-applies nothing until the alert is confirmed.
 - Added `termdeck update` with a confirmation prompt, an unattended `--yes`, an opt-out through `TERMDECK_NO_UPDATE_CHECK`, and an upgrade command chosen from how the copy was installed instead of assumed.
 - Upgraded Ghostty, WezTerm, and Kitty exports to complete visual configurations with wallpaper assets and selected working-profile effects.
