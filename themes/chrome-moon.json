@@ -1,0 +1,26 @@
+{
+  "slug": "chrome-moon",
+  "name": "Chrome Moon",
+  "version": "1.0.0",
+  "category": "special",
+  "order": 1010,
+  "description": "Unofficial Cyberpunk: Edgerunners fan theme: lunar chrome and bittersweet neon.",
+  "background": "#070B14",
+  "foreground": "#E8F4F8",
+  "cursor": "#F4E64C",
+  "selectionBackground": "#25354D",
+  "selectionForeground": "#FFFFFF",
+  "wallpaper": "assets/wallpapers/chrome-moon.png",
+  "wallpaperOpacity": "0.20",
+  "provenance": {
+    "type": "fan-art",
+    "property": "Cyberpunk: Edgerunners",
+    "rightsHolder": "CD PROJEKT RED and respective rights holders",
+    "sourceUrl": "https://www.cyberpunk.net/en/edgerunners",
+    "artworkLicense": "Not covered by the MIT License"
+  },
+  "palette": [
+    "#0B101C", "#FF526D", "#5EF2C2", "#F4E64C", "#54A7FF", "#C86BFF", "#45E7F5", "#C9D8E6",
+    "#3A4458", "#FF7187", "#7BFFD4", "#FFF06A", "#78BCFF", "#DA8CFF", "#6CF4FF", "#F5FBFF"
+  ]
+}

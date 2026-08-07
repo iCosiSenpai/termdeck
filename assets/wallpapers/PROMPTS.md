@@ -34,4 +34,8 @@ An original minimalist brutalist carbon-fiber interior: enormous graphite planes
 
 An original unofficial fan-art wallpaper featuring Male Rover from *Wuthering Waves* beside a moonlit ocean of resonant waves and a distant ruined coastal city. Cinematic anime game-key-art treatment in midnight indigo, cyan resonance light, and restrained gold; the character remains on the right third.
 
+### Chrome Moon 1.0.0
+
+An original alternate-universe, unofficial fan-art wallpaper featuring Rebecca and David from *Cyberpunk: Edgerunners* seated together on a lunar ridge beneath Earthlight. Polished cinematic anime key art in near-black navy, cyan, acid yellow, hot magenta, and mint; both characters and Earth remain on the right while the left 58% is dark negative space. The composition does not recreate an existing episode frame.
+
 Generated on 2026-08-07. Source outputs were copied into `assets/wallpapers/` and the generated terminal previews live in `docs/previews/`.

@@ -122,10 +122,10 @@ Special Editions live in their own section at the bottom of the Control Center. 
       <h3>Resonant Rover <code>v1.0.0</code></h3>
       <p>An unofficial <em>Wuthering Waves</em> fan edition: moonlit resonance, quiet gold, a distant coastal city, and Male Rover.</p>
     </td>
-    <td width="50%" valign="middle" align="center">
-      <h3>Next Special Edition</h3>
-      <p><em>The next card in the deck is still face-down.</em></p>
-      <p><a href="https://github.com/iCosiSenpai/termdeck/issues">Propose a collaboration →</a></p>
+    <td width="50%" valign="top">
+      <img src="docs/previews/chrome-moon.png" alt="Chrome Moon terminal preview" />
+      <h3>Chrome Moon <code>v1.0.0</code></h3>
+      <p>An unofficial <em>Cyberpunk: Edgerunners</em> fan edition: Rebecca and David together on a lunar ridge beneath Earthlight.</p>
     </td>
   </tr>
 </table>
@@ -158,6 +158,7 @@ The Control Center exports all seven packages with <kbd>X</kbd>. A single target
 termdeck export tokyo-midnight --target wezterm --profile glass
 termdeck export nordic-aurora --target kitty --profile cozy
 termdeck export resonant-rover --target warp --profile presentation
+termdeck export chrome-moon --target wezterm --profile glass
 termdeck capabilities
 ```
 

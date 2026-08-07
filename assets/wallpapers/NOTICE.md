@@ -28,3 +28,9 @@ Special Editions are unofficial fan works and are not covered by the project's M
 `resonant-rover.png` is an original AI-assisted, unofficial fan-art composition created for Termdeck and inspired by [*Wuthering Waves*](https://wutheringwaves.kurogames.com/). It is distributed only as part of this free theme project.
 
 **Artwork terms:** Not covered by the MIT License. Do not sell it, imply official affiliation, or reuse it as a standalone commercial asset. *Wuthering Waves*, its characters, and associated marks remain the property of Kuro Games and respective rights holders. No endorsement is claimed or implied.
+
+### Chrome Moon 1.0.0
+
+`chrome-moon.png` is an original AI-assisted, unofficial fan-art composition created for Termdeck and inspired by [*Cyberpunk: Edgerunners*](https://www.cyberpunk.net/en/edgerunners). It is distributed only as part of this free theme project.
+
+**Artwork terms:** Not covered by the MIT License. Do not sell it, imply official affiliation, or reuse it as a standalone commercial asset. *Cyberpunk: Edgerunners*, its characters, and associated marks remain the property of CD PROJEKT RED and respective rights holders. No endorsement is claimed or implied.

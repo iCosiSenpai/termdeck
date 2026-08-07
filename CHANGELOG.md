@@ -18,6 +18,12 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 - Established granitic commit rules for durable, atomic checkpoints and release isolation.
 - Made artwork provenance mandatory catalog metadata and added an automatically verified wallpaper notice for future themes.
 
+### Theme releases
+
+| Theme | Version | Category | Release notes |
+| --- | --- | --- | --- |
+| Chrome Moon | 1.0.0 | Special | Initial *Cyberpunk: Edgerunners* fan-edition palette and Rebecca-and-David lunar wallpaper |
+
 ## [0.3.0] - 2026-08-07
 
 ### Termdeck
