@@ -237,8 +237,11 @@ function helpPanel(palette, width) {
 }
 
 function statusLine({ theme, active, message, profileName, filter, filtering, matches, palette }) {
-  const { dim, gold, mint, reset } = palette;
-  if (message) return `${message.startsWith("✓") ? mint : gold}${message}${reset}`;
+  const { cyan, dim, gold, mint, reset } = palette;
+  if (message) {
+    const tone = message.startsWith("✓") ? mint : message.startsWith("…") ? cyan : gold;
+    return `${tone}${message}${reset}`;
+  }
   if (!theme) return `${gold}No theme matches "${filter}" — press Esc to clear the filter${reset}`;
   const scope = filtering ? ` · ${matches} match${matches === 1 ? "" : "es"}` : "";
   return `${dim}Selected: ${theme.slug} · ${profileName}${scope}${active ? `  |  Active: ${active.theme} · ${active.profile}` : ""}${reset}`;
@@ -314,11 +317,21 @@ export function buildFrame({ themes, themeIndex, profileIndex, active, message, 
   return { rows: frame, width, height };
 }
 
-function exportEverywhere(theme, profileName) {
+/**
+ * Writes every package it can and reports the targets that failed, so one
+ * unwritable terminal cannot silently cancel the rest of the export.
+ */
+export function exportEverywhere(theme, profileName, cwd = process.cwd()) {
+  const written = [];
+  const failed = [];
   for (const target of targets) {
-    const output = defaultOutput(theme, target);
-    writeThemeExport({ theme, target, output, profileName });
+    try {
+      written.push(writeThemeExport({ theme, target, output: defaultOutput(theme, target, cwd), profileName }));
+    } catch (error) {
+      failed.push({ target, message: error.message });
+    }
   }
+  return { written, failed };
 }
 
 /** Exit codes a shell expects after each terminating signal. */
@@ -414,20 +427,48 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
       themeIndex = kept >= 0 ? kept : 0;
     }
 
+    /** Shows what is happening before the terminal blocks, then the outcome. */
+    function runTask(pending, work) {
+      message = pending;
+      draw();
+      message = work();
+      draw();
+    }
+
     function applySelection() {
       const theme = visible[themeIndex];
-      if (!theme) return;
       const profileName = names[profileIndex];
       try {
         applyGhostty({ theme, profile: getProfile(profileName), profileName, font: active?.font || null });
         const reload = reloadGhostty();
         active = readState();
-        message = reload.reloaded
+        return reload.reloaded
           ? `✓ ${theme.name} + ${profileName} applied — Ghostty reloaded`
           : `✓ Applied — press ⌘⇧, to reload Ghostty (${reload.reason})`;
       } catch (error) {
-        message = `! ${error.message}`;
+        return `! ${error.message}`;
       }
+    }
+
+    function exportSelection() {
+      const theme = visible[themeIndex];
+      const { written, failed } = exportEverywhere(theme, names[profileIndex]);
+      if (failed.length === 0) return `✓ Exported ${theme.name} to dist/ for ${written.length} terminals`;
+      const reasons = [...new Set(failed.map((failure) => failure.message))].join(" · ");
+      const targetList = failed.map((failure) => failure.target).join(", ");
+      return `! Exported ${written.length} of ${targets.length} packages — ${targetList} failed: ${reasons}`;
+    }
+
+    function apply() {
+      const theme = visible[themeIndex];
+      if (!theme) return draw();
+      runTask(`… Applying ${theme.name} with the ${names[profileIndex]} profile`, applySelection);
+    }
+
+    function exportAll() {
+      const theme = visible[themeIndex];
+      if (!theme) return draw();
+      runTask(`… Exporting ${theme.name} for ${targets.length} terminals`, exportSelection);
     }
 
     function onFilterKey(value, key) {
@@ -436,7 +477,7 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
         filter = "";
         refilter();
       } else if (key.name === "return") {
-        applySelection();
+        return apply();
       } else if (key.name === "backspace") {
         filter = filter.slice(0, -1);
         refilter();
@@ -459,6 +500,8 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
         if (key.name === "?" || value === "?") { showingHelp = !showingHelp; draw(); return; }
         if (showingHelp) return;
         message = "";
+        if (key.name === "x") return exportAll();
+        if (key.name === "return") return apply();
         if (value === "/") filtering = true;
         else if (key.name === "up" || key.name === "k") themeIndex = (themeIndex - 1 + visible.length) % visible.length;
         else if (key.name === "down" || key.name === "j") themeIndex = (themeIndex + 1) % visible.length;
@@ -466,10 +509,6 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
         else if (key.name === "right" || key.name === "l") profileIndex = (profileIndex + 1) % names.length;
         else if (/^[1-4]$/.test(value)) profileIndex = Number(value) - 1;
         else if (key.name === "r") themeIndex = Math.floor(Math.random() * visible.length);
-        else if (key.name === "x") {
-          exportEverywhere(visible[themeIndex], names[profileIndex]);
-          message = `✓ Exported ${visible[themeIndex].name} to dist/ for ${targets.length} terminals`;
-        } else if (key.name === "return") applySelection();
         draw();
       } catch (error) {
         fail(error);

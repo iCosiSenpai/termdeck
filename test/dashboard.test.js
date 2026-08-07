@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 import { loadThemes } from "../src/catalog.js";
-import { buildFrame, filterThemes, openDashboard } from "../src/dashboard.js";
+import { buildFrame, exportEverywhere, filterThemes, openDashboard } from "../src/dashboard.js";
 import { displayWidth, stripAnsi } from "../src/ui/ansi.js";
 
 /** The whole frame as one searchable string. */
@@ -196,6 +199,53 @@ test("typing narrows the catalog and Escape restores it", async () => {
 
   input.emit("keypress", "\u001b", { name: "escape" });
   await closed;
+});
+
+test("exporting reports every target instead of claiming blanket success", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "termdeck-deck-export-"));
+  const theme = loadThemes().find((item) => item.slug === "nordic-aurora");
+
+  const complete = exportEverywhere(theme, "cozy", root);
+  assert.equal(complete.failed.length, 0);
+  assert.equal(complete.written.length, 7);
+
+  const broken = exportEverywhere({ ...theme, wallpaper: "assets/wallpapers/missing.png" }, "cozy", root);
+  assert.ok(broken.failed.length > 0, "a missing asset must be reported");
+  assert.ok(broken.written.length > 0, "targets that do not need the asset are still written");
+  assert.equal(broken.written.length + broken.failed.length, 7);
+  assert.match(broken.failed[0].message, /Wallpaper asset missing/);
+
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("a slow action reports that it started before it reports the outcome", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "termdeck-deck-task-"));
+  const previousCwd = process.cwd();
+  process.chdir(root);
+  try {
+    const { input, output } = fakeTerminal();
+    const closed = openDashboard({ input, output });
+    output.flush();
+
+    const frames = [];
+    const write = output.write;
+    output.write = (payload) => {
+      frames.push(stripAnsi(payload));
+      return write(payload);
+    };
+
+    input.emit("keypress", "x", { name: "x" });
+
+    assert.equal(frames.length, 2, "the pending state and the outcome are painted separately");
+    assert.match(frames[0], /… Exporting .+ for 7 terminals/, "the deck says what it is doing before it blocks");
+    assert.match(frames[1], /✓ Exported .+ to dist\/ for 7 terminals/, "and then reports the outcome");
+
+    input.emit("keypress", "\u001b", { name: "escape" });
+    await closed;
+  } finally {
+    process.chdir(previousCwd);
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("Escape restores the terminal and releases stdin", async () => {
