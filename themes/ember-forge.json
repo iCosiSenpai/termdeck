@@ -1,12 +1,17 @@
 {
   "slug": "ember-forge",
   "name": "Ember Forge",
+  "version": "1.0.0",
+  "category": "core",
+  "order": 50,
   "description": "Charcoal, molten orange and tempered steel for late-night builds.",
   "background": "#120F0D",
   "foreground": "#E8DDD1",
   "cursor": "#FF9D57",
   "selectionBackground": "#4A2D20",
   "selectionForeground": "#FFF4E8",
+  "wallpaper": "assets/wallpapers/ember-forge.png",
+  "wallpaperOpacity": "0.15",
   "palette": [
     "#1D1916", "#E65F5C", "#89B482", "#E3B562", "#6699CC", "#C17AC8", "#78B9B4", "#D4C7BA",
     "#66584D", "#FF7A70", "#A2CA98", "#F3CC78", "#82B1DF", "#D696DD", "#96D3CE", "#FFF4E8"

@@ -33,8 +33,10 @@ test("apply writes a managed config and uninstall restores user lines", () => {
   const applied = fs.readFileSync(config, "utf8");
   assert.match(applied, /copy-on-select = clipboard/);
   assert.match(applied, /background-image = /);
+  assert.match(applied, /Resonant Rover v1\.0\.0/);
   assert.match(applied, /font-family = Test Mono/);
   assert.ok(fs.existsSync(result.wallpaperFile));
+  assert.equal(JSON.parse(fs.readFileSync(result.state, "utf8")).themeVersion, "1.0.0");
 
   const removed = uninstallGhostty(env);
   assert.equal(removed.changed, true);

@@ -1,113 +1,214 @@
-# Termdeck
+<div align="center">
 
-**A cinematic theme deck and profile switcher for Ghostty.** Pick a palette, combine it with a working mode, and carry the same colors to the other terminal emulators you use.
+# TERMDECK
 
-![Resonant Rover wallpaper](assets/wallpapers/resonant-rover.png)
+### Your terminal has settings. Termdeck gives it a control center.
 
-Termdeck keeps color and behavior separate:
+**A cinematic theme deck, wallpaper system, and profile switcher built for Ghostty.**<br>
+Browse visually. Preview safely. Apply only when it feels right.
 
-- **7 handcrafted themes**: Nordic Aurora, Cyber Circuit, Tokyo Midnight, Velvet Dusk, Ember Forge, Carbon Mono, and Resonant Rover.
-- **4 working profiles**: `cozy`, `focus`, `glass`, and `presentation`.
-- **Ghostty-native background images**, macOS blur, padding, cursor, split dimming, font override, and titlebar styling.
-- **Safe config management**: only a marked block is owned by Termdeck, and the existing config is backed up before every change.
-- **Portable exports** for Ghostty, iTerm2, Kitty, Alacritty, and WezTerm.
-- **Fast switching** with `cycle` and `random`; no runtime dependencies beyond Node.js 20+.
+[![Release](https://img.shields.io/github/v/release/iCosiSenpai/termdeck?style=for-the-badge&color=67e8f9&labelColor=0b0c18)](https://github.com/iCosiSenpai/termdeck/releases/latest)
+[![CI](https://img.shields.io/github/actions/workflow/status/iCosiSenpai/termdeck/ci.yml?branch=main&style=for-the-badge&label=build&labelColor=0b0c18)](https://github.com/iCosiSenpai/termdeck/actions)
+[![Ghostty](https://img.shields.io/badge/Ghostty-1.2%2B-bb9af7?style=for-the-badge&labelColor=0b0c18)](https://ghostty.org)
+[![License](https://img.shields.io/github/license/iCosiSenpai/termdeck?style=for-the-badge&color=8bd5ca&labelColor=0b0c18)](LICENSE)
+
+[Install](#install) · [Control Center](#the-control-center) · [Theme Gallery](#theme-gallery) · [Portability](#one-deck-many-terminals) · [Contribute](CONTRIBUTING.md)
+
+Created by [**Alessio Cosi**](https://github.com/iCosiSenpai) · [Repository](https://github.com/iCosiSenpai/termdeck) · [Latest release](https://github.com/iCosiSenpai/termdeck/releases/latest)
+
+</div>
+
+![Tokyo Midnight running in a Termdeck-styled Ghostty window](docs/previews/tokyo-midnight.png)
 
 ## Install
 
-Homebrew is the recommended route:
+### Homebrew — recommended
 
 ```sh
 brew install iCosiSenpai/tap/termdeck
 termdeck
 ```
 
-The tap is the immediately available distribution channel. The short `brew install termdeck` command will become available when the formula is accepted into Homebrew/core.
+The qualified formula is the one-command installation route recommended for a new Homebrew tap. The shorter `brew install termdeck` becomes available once the project is accepted into Homebrew/core.
 
-No Homebrew? Use the auditable fallback installer:
+### Curl fallback
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/iCosiSenpai/termdeck/main/install.sh | sh
 termdeck
 ```
 
-The installer requires Node.js 20+ and places Termdeck in `~/.local/share/termdeck` with a launcher in `~/.local/bin`. It preserves an existing installation as a timestamped backup.
+The fallback installer is intentionally small and auditable. It requires Node.js 20+, installs under `~/.local/share/termdeck`, creates a launcher in `~/.local/bin`, and preserves an existing installation as a timestamped backup.
 
-Termdeck uses Ghostty's macOS config at `~/Library/Application Support/com.mitchellh.ghostty/config`. It creates the file if it does not exist and never replaces settings outside its clearly marked managed block.
+## The Control Center
 
-## Use
+Running `termdeck` opens the full-screen deck. No theme names to memorize and no configuration file to hand-edit.
 
-Just launch the control center:
+| Key | Action |
+| :---: | --- |
+| <kbd>↑</kbd> <kbd>↓</kbd> | Browse Core Themes and Special Editions |
+| <kbd>←</kbd> <kbd>→</kbd> | Switch between Cozy, Focus, Glass, and Presentation |
+| <kbd>Enter</kbd> | Apply the selected theme and profile to Ghostty |
+| <kbd>X</kbd> | Export the palette for every supported terminal |
+| <kbd>R</kbd> | Pick a random look |
+| <kbd>?</kbd> | Open the built-in keyboard guide |
+
+The dashboard displays the Termdeck release, selected theme version, active setup, project repository, and author profile. Themes are previewed without touching Ghostty until you press <kbd>Enter</kbd>.
+
+### Four profiles, every palette
+
+| Profile | Designed for | Behavior |
+| --- | --- | --- |
+| **Cozy** | Everyday work | Soft translucency, balanced padding |
+| **Focus** | Deep coding sessions | Solid contrast, hidden chrome, dim inactive splits |
+| **Glass** | Desktop aesthetics | Frosted macOS blur and visible artwork |
+| **Presentation** | Screen sharing | Larger type, solid background, generous spacing |
+
+## Theme Gallery
+
+Every theme ships with a purpose-built 16:9 wallpaper. The left side stays dark and low-detail for readable code; the visual focus lives on the right. Palette, wallpaper, metadata, and preview are versioned together.
+
+### Core Collection
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/previews/nordic-aurora.png" alt="Nordic Aurora terminal preview" />
+      <h3>Nordic Aurora <code>v1.0.0</code></h3>
+      <p>Polar-night blues, glacial cyan, aurora green, and a silent observatory above a frozen fjord.</p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/previews/cyber-circuit.png" alt="Cyber Circuit terminal preview" />
+      <h3>Cyber Circuit <code>v1.0.0</code></h3>
+      <p>Black glass, electric cyan, hot magenta, and a precise megastructure reflected in rain.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/previews/tokyo-midnight.png" alt="Tokyo Midnight terminal preview" />
+      <h3>Tokyo Midnight <code>v1.0.0</code></h3>
+      <p>Rainy violet rooftops, elevated rails, quiet lantern light, and neon after midnight.</p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/previews/velvet-dusk.png" alt="Velvet Dusk terminal preview" />
+      <h3>Velvet Dusk <code>v1.0.0</code></h3>
+      <p>Plum shadows, rose glass, lavender gardens, and warm candlelight at a dreamlike observatory.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/previews/ember-forge.png" alt="Ember Forge terminal preview" />
+      <h3>Ember Forge <code>v1.0.0</code></h3>
+      <p>Charcoal basalt, molten orange, tempered steel, and disciplined late-night workshop energy.</p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/previews/carbon-mono.png" alt="Carbon Mono terminal preview" />
+      <h3>Carbon Mono <code>v1.0.0</code></h3>
+      <p>Graphite architecture, monochrome restraint, carbon texture, and a single mint signal.</p>
+    </td>
+  </tr>
+</table>
+
+### ◆ Special Editions
+
+Special Editions live in their own section at the bottom of the Control Center. They may explore games, characters, collaborations, events, or limited visual concepts while keeping the same usability standards as the Core Collection.
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/previews/resonant-rover.png" alt="Resonant Rover terminal preview" />
+      <h3>Resonant Rover <code>v1.0.0</code></h3>
+      <p>An unofficial <em>Wuthering Waves</em> fan edition: moonlit resonance, quiet gold, a distant coastal city, and Male Rover.</p>
+    </td>
+    <td width="50%" valign="middle" align="center">
+      <h3>Next Special Edition</h3>
+      <p><em>The next card in the deck is still face-down.</em></p>
+      <p><a href="https://github.com/iCosiSenpai/termdeck/issues">Propose a collaboration →</a></p>
+    </td>
+  </tr>
+</table>
+
+## One deck, many terminals
+
+| Terminal | Colors | Wallpaper | Profiles | Export |
+| --- | :---: | :---: | :---: | :---: |
+| **Ghostty** | ✓ | ✓ | ✓ | Native |
+| **iTerm2** | ✓ | — | — | `.itermcolors` |
+| **Kitty** | ✓ | — | — | `.conf` |
+| **Alacritty** | ✓ | — | — | `.toml` |
+| **WezTerm** | ✓ | — | — | `.lua` |
+
+Ghostty receives the complete experience: background art, opacity, Metal blur, padding, cursor style, titlebar behavior, and split dimming. Other terminals receive faithful color exports without pretending that terminal-specific effects are portable.
+
+## Safe by design
+
+Termdeck does not replace your Ghostty configuration.
+
+- It owns only a clearly marked managed block.
+- It creates a backup before every change.
+- Theme files and wallpaper assets are installed under `~/.config/termdeck`.
+- `termdeck uninstall` removes the managed integration and keeps a recovery copy.
+- Palette previews never modify the active terminal.
+
+On macOS, Ghostty is managed at `~/Library/Application Support/com.mitchellh.ghostty/config`. Some opacity and titlebar changes can require a full Ghostty restart.
+
+## Versioning
+
+Termdeck and every theme use independent [Semantic Versioning](https://semver.org/):
+
+- **Termdeck version** tracks the application, dashboard, installers, and exporters.
+- **Theme version** tracks palette, wallpaper, metadata, and visual tuning for that theme.
+- Applied state records both versions, making screenshots and bug reports reproducible.
+
+See the complete [changelog](CHANGELOG.md). The currently installed build can always identify itself with `termdeck version`.
+
+<details>
+<summary><strong>Power-user commands</strong></summary>
+
+The visual Control Center is the default, but every action remains scriptable:
 
 ```sh
-termdeck
-```
-
-Use the arrow keys to browse themes and modes. The preview changes immediately; press <kbd>Enter</kbd> only when you want to apply the selection. `X` exports the selected palette for all supported terminals, `R` finds a random look, and `?` opens the keyboard guide.
-
-The original subcommands remain available for scripts and dotfiles:
-
-```sh
-# Explore the deck
 termdeck list
 termdeck preview tokyo-midnight
-
-# Apply colors plus a working mode
-termdeck apply tokyo-midnight --profile glass
 termdeck apply nordic-aurora --profile focus
-termdeck apply resonant-rover --profile cozy --font "JetBrainsMono Nerd Font"
-
-# Rotate without remembering names
-termdeck cycle
-termdeck random --profile glass
-
-# Inspect or cleanly remove the integration
+termdeck cycle --profile glass
+termdeck random
+termdeck export cyber-circuit --target iterm2
 termdeck status
+termdeck doctor
 termdeck uninstall
 ```
 
-Reload Ghostty with <kbd>⌘</kbd><kbd>⇧</kbd><kbd>,</kbd>. On macOS, opacity and titlebar changes may require closing Ghostty completely and reopening it.
+</details>
 
-## Working profiles
+<details>
+<summary><strong>Theme authoring and preview generation</strong></summary>
 
-| Profile | Best for | Character |
-| --- | --- | --- |
-| `cozy` | Daily work | Gentle translucency, balanced padding |
-| `focus` | Long coding sessions | Solid background, dim inactive splits, hidden chrome |
-| `glass` | Desktop aesthetics | Frosted blur, translucent surface, visible artwork |
-| `presentation` | Screen sharing | Large type, solid contrast, generous spacing |
-
-The color theme and profile are independent, so every palette has four personalities. Pass `--font NAME` to set a Ghostty font without editing the source theme.
-
-## Export to other terminals
+Theme definitions live in `themes/*.json` and require a SemVer version, category, order, wallpaper, foreground/background colors, cursor, selection colors, and exactly sixteen ANSI colors.
 
 ```sh
-termdeck export nordic-aurora --target iterm2
-termdeck export cyber-circuit --target kitty
-termdeck export tokyo-midnight --target alacritty
-termdeck export velvet-dusk --target wezterm
-termdeck export carbon-mono --target ghostty --output ./carbon.conf
+npm run previews
+npm run check
 ```
 
-Exports land in `dist/<terminal>/` unless `--output` is supplied. Color palettes are portable; effects such as Ghostty background images, Metal blur, titlebar modes, and split behavior are terminal-specific and therefore intentionally not embedded in the cross-terminal exports.
+`npm run previews` deterministically rebuilds every terminal screenshot from the real theme metadata and wallpaper. Artwork must be original or have an explicit redistributable license and provenance.
 
-## Author a theme
+</details>
 
-Create `themes/my-theme.json` with foreground/background colors and exactly 16 ANSI palette entries. The catalog validates every theme at startup. Use an existing file as a starting point, then run:
+## Project
 
-```sh
-npm test
-termdeck preview my-theme
-```
+- **Release:** [v0.3.0](https://github.com/iCosiSenpai/termdeck/releases/tag/v0.3.0)
+- **Repository:** [github.com/iCosiSenpai/termdeck](https://github.com/iCosiSenpai/termdeck)
+- **Homebrew tap:** [github.com/iCosiSenpai/homebrew-tap](https://github.com/iCosiSenpai/homebrew-tap)
+- **Author:** [github.com/iCosiSenpai](https://github.com/iCosiSenpai)
+- **Issues and ideas:** [Termdeck issue tracker](https://github.com/iCosiSenpai/termdeck/issues)
 
-Wallpaper paths are project-relative. Keep the left side low-detail if the image will sit behind terminal text.
+Source code and Core Theme data are MIT licensed. Core wallpaper artwork is original and distributed with Termdeck; Special Edition rights and attribution are documented alongside their assets. Resonant Rover is unofficial fan work and is not affiliated with or endorsed by Kuro Games. See [the wallpaper notice](assets/wallpapers/NOTICE.md).
 
-## Resonant Rover fan theme
+<div align="center">
 
-`resonant-rover` is an unofficial fan-made theme inspired by *Wuthering Waves*. The wallpaper is an original AI-assisted composition made specifically for Termdeck—not a downloaded or repackaged third-party artwork. It is kept separate from the MIT-licensed source code; see [assets/wallpapers/NOTICE.md](assets/wallpapers/NOTICE.md).
+**Build a terminal worth looking at.**
 
-Termdeck is not affiliated with or endorsed by Kuro Games. *Wuthering Waves* and its characters are property of their respective rights holders.
+[⭐ Star Termdeck](https://github.com/iCosiSenpai/termdeck) · [Follow @iCosiSenpai](https://github.com/iCosiSenpai)
 
-## License
-
-Source code and theme data are released under the [MIT License](LICENSE). The fan-themed wallpaper is subject to the notice above.
+</div>

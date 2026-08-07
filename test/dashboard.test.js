@@ -6,7 +6,7 @@ import { renderDashboard } from "../src/dashboard.js";
 test("dashboard renders the selected theme, profiles, and controls", () => {
   const output = renderDashboard({
     themes: loadThemes(),
-    themeIndex: 5,
+    themeIndex: 2,
     profileIndex: 2,
     active: { theme: "tokyo-midnight", profile: "glass" },
     columns: 120,
@@ -16,10 +16,13 @@ test("dashboard renders the selected theme, profiles, and controls", () => {
   assert.match(output, /GLASS/);
   assert.match(output, /ENTER/);
   assert.match(output, /LIVE PREVIEW/);
+  assert.match(output, /CORE COLLECTION/);
+  assert.match(output, /SPECIAL EDITIONS/);
+  assert.match(output, /github\.com\/iCosiSenpai\/termdeck/);
 });
 
 test("dashboard has a compact layout", () => {
   const output = renderDashboard({ themes: loadThemes(), themeIndex: 0, profileIndex: 0, columns: 70, rows: 22 });
   assert.match(output, /CONTROL CENTER/);
-  assert.match(output, /CARBON MONO/);
+  assert.match(output, /Carbon M/);
 });

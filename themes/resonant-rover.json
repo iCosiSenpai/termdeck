@@ -1,6 +1,9 @@
 {
   "slug": "resonant-rover",
   "name": "Resonant Rover",
+  "version": "1.0.0",
+  "category": "special",
+  "order": 1000,
   "description": "Unofficial Wuthering Waves fan theme: moonlit resonance and quiet gold.",
   "background": "#080B16",
   "foreground": "#DCEAF1",

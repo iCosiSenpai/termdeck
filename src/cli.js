@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { getTheme, loadThemes } from "./catalog.js";
+import { getTheme, loadThemes, packageMetadata } from "./catalog.js";
 import { defaultOutput, exportTheme, targets } from "./exporters.js";
 import { applyGhostty, readState, resolvePaths, uninstallGhostty } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
@@ -17,7 +17,7 @@ const c = {
 };
 
 function help() {
-  console.log(`${c.bold}Termdeck${c.reset} — cinematic themes and modes for your terminal
+  console.log(`${c.bold}Termdeck v${packageMetadata.version}${c.reset} — cinematic themes and modes for your terminal
 
 Usage:
   termdeck                         Open the interactive control center
@@ -29,6 +29,7 @@ Usage:
   termdeck export <theme> --target ${targets.join("|")} [--output PATH]
   termdeck profiles
   termdeck status
+  termdeck version
   termdeck doctor
   termdeck uninstall
 
@@ -120,7 +121,10 @@ export async function run(argv) {
     case "dashboard": await openDashboard(); break;
     case "list":
       console.log(`${c.bold}Theme deck${c.reset}\n`);
-      for (const theme of loadThemes()) console.log(`  ${theme.palette.slice(8, 12).map((color) => swatch(color, 2)).join("")}  ${c.bold}${theme.slug.padEnd(20)}${c.reset} ${theme.description}`);
+      for (const category of ["core", "special"]) {
+        console.log(`${category === "special" ? "\n◆ Special Editions" : "Core Collection"}`);
+        for (const theme of loadThemes().filter((item) => item.category === category)) console.log(`  ${theme.palette.slice(8, 12).map((color) => swatch(color, 2)).join("")}  ${c.bold}${theme.slug.padEnd(20)}${c.reset} v${theme.version}  ${theme.description}`);
+      }
       break;
     case "preview":
       if (positional[0]) preview(getTheme(positional[0]));
@@ -157,9 +161,14 @@ export async function run(argv) {
     case "status": {
       const state = readState();
       if (!state) console.log("No Termdeck theme is currently managed.");
-      else console.log(`${c.bold}${state.theme}${c.reset} · ${state.profile}\n${c.dim}${state.config}\nApplied ${state.appliedAt}${c.reset}`);
+      else console.log(`${c.bold}${state.theme}@${state.themeVersion || "unknown"}${c.reset} · ${state.profile}\n${c.dim}${state.config}\nApplied ${state.appliedAt}${c.reset}`);
       break;
     }
+    case "version":
+    case "--version":
+    case "-v":
+      console.log(`Termdeck v${packageMetadata.version}\nRelease: https://github.com/iCosiSenpai/termdeck/releases/tag/v${packageMetadata.version}\nRepository: https://github.com/iCosiSenpai/termdeck\nAuthor: https://github.com/iCosiSenpai`);
+      break;
     case "doctor": doctor(); break;
     case "uninstall": {
       const result = uninstallGhostty();

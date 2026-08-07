@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
-import { loadThemes } from "./catalog.js";
+import { loadThemes, packageMetadata } from "./catalog.js";
 import { defaultOutput, exportTheme, targets } from "./exporters.js";
 import { applyGhostty, readState } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
@@ -41,11 +41,11 @@ function move(row, column = 1) {
 }
 
 function logo(compact = false) {
-  if (compact) return [`${bold}${cyan}TERM${white}DECK${reset}  ${dim}// CONTROL CENTER${reset}`];
+  if (compact) return [`${bold}${cyan}TERM${white}DECK${reset}  ${dim}// CONTROL CENTER  v${packageMetadata.version}${reset}`];
   return [
     `${cyan}${bold}╺┳╸┏━╸┏━┓┏┳┓${white}  ╺┳┓┏━╸┏━╷╻┏${reset}`,
     `${cyan}${bold} ┃ ┣╸ ┣┳┛┃┃┃${white}   ┃┃┣╸ ┃  ┣┻┓${reset}`,
-    `${cyan}${bold} ╹ ┗━╸╹┗╸╹ ╹${white}  ╺┻┛┗━╸┗━╸╹ ╹${reset}  ${dim}CONTROL CENTER${reset}`,
+    `${cyan}${bold} ╹ ┗━╸╹┗╸╹ ╹${white}  ╺┻┛┗━╸┗━╸╹ ╹${reset}  ${dim}CONTROL CENTER  v${packageMetadata.version}${reset}`,
   ];
 }
 
@@ -72,21 +72,32 @@ export function renderDashboard({ themes, themeIndex, profileIndex, active, mess
 
   logo(compact).forEach((line, index) => write(2 + index, 3, line));
   const top = compact ? 4 : 6;
+  write(top - 1, 3, `${dim}${crop(`github.com/iCosiSenpai/termdeck  •  github.com/iCosiSenpai  •  release v${packageMetadata.version}`, width - 6)}${reset}`);
   write(top, 3, `${muted}${"─".repeat(Math.max(20, width - 6))}${reset}`);
   write(top + 1, 3, `${bold}${white}THEMES${reset}`);
   write(top + 1, rightColumn, `${bold}${white}LIVE PREVIEW${reset}`);
 
-  themes.forEach((item, index) => {
-    const selected = index === themeIndex;
-    const activeMark = item.slug === active?.theme ? `${mint}●${reset}` : " ";
-    const marker = selected ? `${cyan}▶${reset}` : " ";
-    const colors = item.palette.slice(8, 11).map((color) => swatch(color, 2)).join("");
-    write(top + 3 + index, 3, `${marker} ${activeMark} ${colors} ${selected ? bold + white : muted}${pad(item.name, leftWidth - 15)}${reset}`);
-  });
+  let catalogRow = top + 2;
+  for (const category of ["core", "special"]) {
+    const categoryThemes = themes.filter((item) => item.category === category);
+    if (categoryThemes.length === 0) continue;
+    write(catalogRow, 3, `${category === "special" ? gold : muted}${bold}${category === "special" ? "◆ SPECIAL EDITIONS" : "CORE COLLECTION"}${reset}`);
+    catalogRow += 1;
+    for (const item of categoryThemes) {
+      const index = themes.indexOf(item);
+      const selected = index === themeIndex;
+      const activeMark = item.slug === active?.theme ? `${mint}●${reset}` : " ";
+      const marker = selected ? `${cyan}▶${reset}` : " ";
+      const colors = item.palette.slice(8, 11).map((color) => swatch(color, 2)).join("");
+      write(catalogRow, 3, `${marker} ${activeMark} ${colors} ${selected ? bold + white : muted}${pad(item.name, leftWidth - 15)}${reset}`);
+      catalogRow += 1;
+    }
+  }
 
   const detailTop = top + 3;
   write(detailTop, rightColumn, `${bold}${rgb(theme.cursor)}${crop(theme.name.toUpperCase(), rightWidth)}${reset}`);
   write(detailTop + 1, rightColumn, `${muted}${crop(theme.description, rightWidth)}${reset}`);
+  write(detailTop + 2, rightColumn, `${theme.category === "special" ? gold : cyan}${theme.category === "special" ? "◆ SPECIAL EDITION" : "CORE THEME"}${reset}  ${dim}theme v${theme.version}${reset}`);
   write(detailTop + 3, rightColumn, theme.palette.slice(0, 8).map((color) => swatch(color, compact ? 3 : 5)).join(" "));
   write(detailTop + 4, rightColumn, theme.palette.slice(8).map((color) => swatch(color, compact ? 3 : 5)).join(" "));
   write(detailTop + 6, rightColumn, `${dim}BACKGROUND${reset} ${swatch(theme.background, 8)}  ${dim}TEXT${reset} ${swatch(theme.foreground, 8)}  ${dim}CURSOR${reset} ${swatch(theme.cursor, 8)}`);

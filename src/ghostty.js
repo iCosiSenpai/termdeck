@@ -55,7 +55,7 @@ function backup(file) {
 export function buildManagedBlock({ themeFile, theme, profile, profileName, font, wallpaperFile }) {
   const lines = [
     START_MARKER,
-    `# theme: ${theme.name} | profile: ${profileName}`,
+    `# theme: ${theme.name} v${theme.version} | profile: ${profileName}`,
     `theme = ${themeFile}`,
     ...Object.entries(profile.options).map(([key, value]) => `${key} = ${value}`),
   ];
@@ -93,7 +93,7 @@ export function applyGhostty({ theme, profile, profileName, font, env = process.
   fs.writeFileSync(paths.config, replaceManagedBlock(existing, block));
   fs.writeFileSync(
     paths.state,
-    `${JSON.stringify({ theme: theme.slug, profile: profileName, font: font || null, appliedAt: new Date().toISOString(), config: paths.config }, null, 2)}\n`,
+    `${JSON.stringify({ theme: theme.slug, themeVersion: theme.version, profile: profileName, font: font || null, appliedAt: new Date().toISOString(), config: paths.config }, null, 2)}\n`,
   );
   return { ...paths, themeFile, wallpaperFile, backupFile };
 }

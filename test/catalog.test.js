@@ -7,6 +7,9 @@ test("catalog contains valid and uniquely named themes", () => {
   assert.ok(themes.length >= 7);
   assert.equal(new Set(themes.map((theme) => theme.slug)).size, themes.length);
   assert.equal(getTheme("tokyo-midnight").palette.length, 16);
+  assert.ok(themes.every((theme) => /^\d+\.\d+\.\d+$/.test(theme.version)));
+  assert.equal(themes.at(-1).category, "special");
+  assert.equal(themes.at(-1).slug, "resonant-rover");
 });
 
 test("unknown themes produce a useful error", () => {

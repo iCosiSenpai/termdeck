@@ -5,16 +5,22 @@ import { fileURLToPath } from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 export const projectRoot = ROOT;
+export const packageMetadata = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
 
 export function loadThemes() {
   return fs
     .readdirSync(path.join(ROOT, "themes"))
     .filter((file) => file.endsWith(".json"))
-    .sort()
     .map((file) => {
       const theme = JSON.parse(fs.readFileSync(path.join(ROOT, "themes", file), "utf8"));
       validateTheme(theme, file);
       return theme;
+    })
+    .sort((left, right) => {
+      const categories = { core: 0, special: 1 };
+      return (categories[left.category] ?? 99) - (categories[right.category] ?? 99)
+        || (left.order ?? 999) - (right.order ?? 999)
+        || left.name.localeCompare(right.name);
     });
 }
 
@@ -30,13 +36,15 @@ export function getTheme(slug) {
 }
 
 export function validateTheme(theme, source = "theme") {
-  const required = ["slug", "name", "description", "background", "foreground", "cursor", "selectionBackground"];
+  const required = ["slug", "name", "version", "category", "description", "background", "foreground", "cursor", "selectionBackground", "wallpaper"];
   for (const key of required) {
     if (!theme[key]) throw new Error(`${source}: missing ${key}`);
   }
   if (!Array.isArray(theme.palette) || theme.palette.length !== 16) {
     throw new Error(`${source}: palette must contain exactly 16 colors`);
   }
+  if (!/^[0-9]+\.[0-9]+\.[0-9]+$/.test(theme.version)) throw new Error(`${source}: version must use SemVer`);
+  if (!["core", "special"].includes(theme.category)) throw new Error(`${source}: category must be core or special`);
   for (const color of [theme.background, theme.foreground, theme.cursor, theme.selectionBackground, ...theme.palette]) {
     if (!/^#[0-9a-f]{6}$/i.test(color)) throw new Error(`${source}: invalid color ${color}`);
   }
