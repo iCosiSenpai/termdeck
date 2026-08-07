@@ -47,6 +47,16 @@ export function getTheme(slug) {
   return theme;
 }
 
+/**
+ * Picks a theme other than `currentSlug`, so asking for a random look always
+ * changes something. Falls back to the whole list when there is no alternative.
+ */
+export function pickRandomTheme(themes, currentSlug) {
+  const alternatives = themes.filter((theme) => theme.slug !== currentSlug);
+  const pool = alternatives.length > 0 ? alternatives : themes;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 export function validateTheme(theme, source = "theme") {
   const required = ["slug", "name", "version", "category", "description", "background", "foreground", "cursor", "selectionBackground", "wallpaper"];
   for (const key of required) {

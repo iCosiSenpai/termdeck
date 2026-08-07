@@ -28,6 +28,7 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 - Replaced the Live Preview swatch grid with a miniature terminal window rendered in the selected theme's own background, foreground, cursor, and palette, sized to the space available and falling back to swatches where colour is unavailable.
 - Added `/` to filter the catalog by name, slug, description, or category while browsing, with live match counts, an explained empty result, and `Esc` to clear.
 - Made the Control Center announce what it is doing before applying or exporting blocks the terminal, and report every export target instead of claiming success when some packages failed.
+- Made the Control Center's random key always land on a different theme, sharing one selection rule with `termdeck random` and no longer failing on a single-theme catalog.
 
 ### Theme releases
 

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { getTheme, loadThemes, packageMetadata } from "./catalog.js";
+import { getTheme, loadThemes, packageMetadata, pickRandomTheme } from "./catalog.js";
 import { defaultOutput, targets } from "./exporters.js";
 import { writeThemeExport } from "./export-package.js";
 import { capabilityLabels, terminalCapabilities } from "./capabilities.js";
@@ -158,10 +158,7 @@ export async function run(argv) {
       break;
     }
     case "random": {
-      const themes = loadThemes();
-      const current = readState()?.theme;
-      const choices = themes.filter((theme) => theme.slug !== current);
-      apply(choices[Math.floor(Math.random() * choices.length)].slug, options);
+      apply(pickRandomTheme(loadThemes(), readState()?.theme).slug, options);
       break;
     }
     case "export": {

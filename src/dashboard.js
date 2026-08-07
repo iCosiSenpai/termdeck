@@ -1,5 +1,5 @@
 import readline from "node:readline";
-import { loadThemes, packageMetadata } from "./catalog.js";
+import { loadThemes, packageMetadata, pickRandomTheme } from "./catalog.js";
 import { defaultOutput, targets } from "./exporters.js";
 import { writeThemeExport } from "./export-package.js";
 import { applyGhostty, readState, reloadGhostty } from "./ghostty.js";
@@ -508,7 +508,7 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
         else if (key.name === "left" || key.name === "h") profileIndex = (profileIndex - 1 + names.length) % names.length;
         else if (key.name === "right" || key.name === "l") profileIndex = (profileIndex + 1) % names.length;
         else if (/^[1-4]$/.test(value)) profileIndex = Number(value) - 1;
-        else if (key.name === "r") themeIndex = Math.floor(Math.random() * visible.length);
+        else if (key.name === "r" && visible.length > 0) themeIndex = visible.indexOf(pickRandomTheme(visible, visible[themeIndex]?.slug));
         draw();
       } catch (error) {
         fail(error);
