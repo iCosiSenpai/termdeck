@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { getTheme } from "../src/catalog.js";
-import { applyGhostty, END_MARKER, replaceManagedBlock, START_MARKER, uninstallGhostty } from "../src/ghostty.js";
+import { applyGhostty, END_MARKER, reloadGhostty, replaceManagedBlock, START_MARKER, uninstallGhostty } from "../src/ghostty.js";
 import { getProfile } from "../src/profiles.js";
 
 test("managed block preserves user configuration and is idempotent", () => {
@@ -42,4 +42,25 @@ test("apply writes a managed config and uninstall restores user lines", () => {
   assert.equal(removed.changed, true);
   assert.equal(fs.readFileSync(config, "utf8"), "copy-on-select = clipboard\n");
   fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("reload uses Ghostty's macOS scripting action without synthesizing keystrokes", () => {
+  let invocation;
+  const result = reloadGhostty({
+    platform: "darwin",
+    run: (command, args) => {
+      invocation = { command, args };
+      return "reloaded\n";
+    },
+  });
+  assert.equal(result.reloaded, true);
+  assert.equal(invocation.command, "/usr/bin/osascript");
+  assert.ok(invocation.args.includes('perform action "reload_config" on targetTerminal'));
+  assert.ok(invocation.args.every((value) => !value.includes("keystroke")));
+});
+
+test("reload degrades safely outside macOS", () => {
+  const result = reloadGhostty({ platform: "linux", run: () => assert.fail("runner must not be called") });
+  assert.equal(result.reloaded, false);
+  assert.match(result.reason, /macOS/);
 });

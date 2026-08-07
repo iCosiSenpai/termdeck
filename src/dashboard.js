@@ -2,7 +2,7 @@ import readline from "node:readline";
 import { loadThemes, packageMetadata } from "./catalog.js";
 import { defaultOutput, targets } from "./exporters.js";
 import { writeThemeExport } from "./export-package.js";
-import { applyGhostty, readState } from "./ghostty.js";
+import { applyGhostty, readState, reloadGhostty } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
 
 const ESC = "\u001b[";
@@ -187,8 +187,11 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
         const profileName = names[profileIndex];
         try {
           applyGhostty({ theme, profile: getProfile(profileName), profileName, font: active?.font || null });
+          const reload = reloadGhostty();
           active = readState();
-          message = `✓ ${theme.name} + ${profileName} applied — Ghostty will reload automatically`;
+          message = reload.reloaded
+            ? `✓ ${theme.name} + ${profileName} applied — Ghostty reloaded`
+            : `✓ Applied — press ⌘⇧, to reload Ghostty (${reload.reason})`;
         } catch (error) {
           message = `! ${error.message}`;
         }

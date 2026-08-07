@@ -5,7 +5,7 @@ import { getTheme, loadThemes, packageMetadata } from "./catalog.js";
 import { defaultOutput, targets } from "./exporters.js";
 import { writeThemeExport } from "./export-package.js";
 import { capabilityLabels, terminalCapabilities } from "./capabilities.js";
-import { applyGhostty, readState, resolvePaths, uninstallGhostty } from "./ghostty.js";
+import { applyGhostty, readState, reloadGhostty, resolvePaths, uninstallGhostty } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
 import { openDashboard } from "./dashboard.js";
 
@@ -84,7 +84,9 @@ function apply(themeSlug, options) {
   console.log(`${c.green}✓${c.reset} Applied ${c.bold}${theme.name}${c.reset} with the ${profileName} profile.`);
   console.log(`${c.dim}${result.config}${c.reset}`);
   if (result.backupFile) console.log(`${c.dim}Backup: ${result.backupFile}${c.reset}`);
-  console.log(`${c.yellow}Reload Ghostty with ⌘⇧,; opacity/titlebar changes can require a full restart.${c.reset}`);
+  const reload = reloadGhostty();
+  if (reload.reloaded) console.log(`${c.green}✓${c.reset} Ghostty configuration reloaded.`);
+  else console.log(`${c.yellow}Reload Ghostty with ⌘⇧, (${reload.reason}). Opacity/titlebar changes can require a full restart.${c.reset}`);
 }
 
 function binaryExists(binary) {

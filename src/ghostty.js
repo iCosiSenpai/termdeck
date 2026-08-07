@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { projectRoot } from "./catalog.js";
 import { ghostty } from "./exporters.js";
 
@@ -116,5 +117,24 @@ export function readState(env = process.env) {
     return JSON.parse(fs.readFileSync(paths.state, "utf8"));
   } catch {
     return null;
+  }
+}
+
+export function reloadGhostty({ platform = process.platform, run = execFileSync } = {}) {
+  if (platform !== "darwin") return { reloaded: false, reason: "automatic reload is available on macOS only" };
+  const script = [
+    'if application "Ghostty" is not running then return "not-running"',
+    'tell application "Ghostty"',
+    "set targetTerminal to focused terminal of selected tab of front window",
+    'perform action "reload_config" on targetTerminal',
+    'return "reloaded"',
+    "end tell",
+  ];
+  try {
+    const output = String(run("/usr/bin/osascript", script.flatMap((line) => ["-e", line]), { encoding: "utf8" })).trim();
+    if (output === "reloaded") return { reloaded: true, reason: null };
+    return { reloaded: false, reason: output === "not-running" ? "Ghostty is not running" : `unexpected response: ${output}` };
+  } catch (error) {
+    return { reloaded: false, reason: error.stderr?.toString().trim() || error.message };
   }
 }
