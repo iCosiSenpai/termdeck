@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { getTheme } from "../src/catalog.js";
-import { applyGhostty, END_MARKER, reloadGhostty, replaceManagedBlock, START_MARKER, uninstallGhostty } from "../src/ghostty.js";
+import { applyGhostty, detectGhostty, END_MARKER, reloadGhostty, replaceManagedBlock, START_MARKER, uninstallGhostty } from "../src/ghostty.js";
 import { getProfile } from "../src/profiles.js";
 
 test("managed block preserves user configuration and is idempotent", () => {
@@ -64,4 +64,44 @@ test("reload degrades safely outside macOS", () => {
   const result = reloadGhostty({ platform: "linux", run: () => assert.fail("runner must not be called") });
   assert.equal(result.reloaded, false);
   assert.match(result.reason, /macOS/);
+});
+
+
+test("Ghostty is looked for as an app bundle and then on PATH", () => {
+  const bundle = "/Applications/Ghostty.app";
+
+  const installed = detectGhostty({
+    platform: "darwin",
+    env: {},
+    exists: (candidate) => candidate === bundle,
+    run: () => assert.fail("PATH must not be consulted once the bundle is found"),
+  });
+  assert.deepEqual(installed, { installed: true, where: bundle });
+
+  const relocated = detectGhostty({
+    platform: "darwin",
+    env: { TERMDECK_GHOSTTY_APP: "/Volumes/Apps/Ghostty.app" },
+    exists: (candidate) => candidate === "/Volumes/Apps/Ghostty.app",
+    run: () => assert.fail("an override that exists is enough"),
+  });
+  assert.equal(relocated.where, "/Volumes/Apps/Ghostty.app", "an unusual installation is still recognised");
+
+  const onPath = detectGhostty({
+    platform: "linux",
+    env: {},
+    exists: () => false,
+    run: () => "/usr/local/bin/ghostty\n",
+  });
+  assert.deepEqual(onPath, { installed: true, where: "/usr/local/bin/ghostty" });
+
+  const absent = detectGhostty({
+    platform: "linux",
+    env: {},
+    exists: () => false,
+    run: () => { throw new Error("which exited 1"); },
+  });
+  assert.deepEqual(absent, { installed: false, where: null }, "a missing binary is an answer, not a crash");
+
+  const empty = detectGhostty({ platform: "darwin", env: {}, exists: () => false, run: () => "\n" });
+  assert.equal(empty.installed, false, "blank output does not count as found");
 });

@@ -74,6 +74,49 @@ test("a deck with nothing applied says what to press", () => {
   assert.match(plain, /Nothing applied yet — press ENTER to apply Tokyo Midnight/);
 });
 
+test("without Ghostty the deck stops promising that ENTER changes anything", async () => {
+  const themes = loadThemes();
+  const state = {
+    themes,
+    themeIndex: 2,
+    profileIndex: 0,
+    active: { theme: "nordic-aurora", profile: "cozy" },
+    destination: "~/Library/Application Support/com.mitchellh.ghostty/config",
+    columns: 120,
+    rows: 36,
+  };
+
+  const withGhostty = stripAnsi(buildFrame(state).rows.join("\n"));
+  assert.match(withGhostty, /Applied: nordic-aurora/);
+  assert.doesNotMatch(withGhostty, /Ghostty not found/);
+
+  const without = stripAnsi(buildFrame({ ...state, ghostty: false }).rows.join("\n"));
+  assert.match(without, /Ghostty not found — press X to export these themes for the terminal you use/);
+  assert.match(without, /ENTER writes .+ — unread without Ghostty/, "the destination says it will go unread");
+  assert.doesNotMatch(without, /Applied: nordic-aurora/, "the applied state is not the headline when it cannot take effect");
+
+  // Applying anyway is honest about the outcome and never spawns a reload.
+  await withSandboxedHome(async () => {
+    const { input, output } = fakeTerminal();
+    const closed = openDashboard({
+      input,
+      output,
+      ghostty: false,
+      reload: () => assert.fail("a terminal that is not installed is not reloaded"),
+    });
+    output.flush();
+
+    input.emit("keypress", "\r", { name: "return" });
+    assert.match(
+      stripAnsi(output.flush()),
+      /! Written, but Ghostty is not installed — press X to export .+ instead/,
+    );
+
+    input.emit("keypress", "\u001b", { name: "escape" });
+    await closed;
+  });
+});
+
 test("dashboard has a compact layout", () => {
   const output = screenText({ themes: loadThemes(), themeIndex: 0, profileIndex: 0, columns: 70, rows: 22 });
   assert.match(output, /CONTROL CENTER/);

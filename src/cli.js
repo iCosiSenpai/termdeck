@@ -6,7 +6,7 @@ import { getTheme, loadThemes, packageMetadata, pickRandomTheme } from "./catalo
 import { defaultOutput, targets } from "./exporters.js";
 import { writeThemeExport } from "./export-package.js";
 import { capabilityLabels, terminalCapabilities } from "./capabilities.js";
-import { applyGhostty, readState, reloadGhostty, resolvePaths, uninstallGhostty } from "./ghostty.js";
+import { applyGhostty, detectGhostty, readState, reloadGhostty, resolvePaths, uninstallGhostty } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
 import { openDashboard } from "./dashboard.js";
 import { checkUpdates, refreshCommand, runUpgrade } from "./updates.js";
@@ -179,26 +179,27 @@ function apply(themeSlug, options) {
   console.log(`${c.green}✓${c.reset} Applied ${c.bold}${theme.name}${c.reset} with the ${profileName} profile.`);
   console.log(`${c.dim}${result.config}${c.reset}`);
   if (result.backupFile) console.log(`${c.dim}Backup: ${result.backupFile}${c.reset}`);
+
+  // Writing a configuration no installed terminal reads is not a success worth
+  // reporting quietly. Say so, and point at the way these themes reach the
+  // terminal that is actually running.
+  if (!detectGhostty().installed) {
+    console.log(`${c.yellow}!${c.reset} Ghostty is not installed, so nothing reads this file yet.`);
+    console.log(`${c.dim}  Using another terminal? ${c.reset}termdeck export ${theme.slug} --target NAME${c.dim} — see termdeck capabilities${c.reset}`);
+    return;
+  }
+
   const reload = reloadGhostty();
   if (reload.reloaded) console.log(`${c.green}✓${c.reset} Ghostty configuration reloaded.`);
   else console.log(`${c.yellow}Reload Ghostty with ⌘⇧, (${reload.reason}). Opacity/titlebar changes can require a full restart.${c.reset}`);
 }
 
-function binaryExists(binary) {
-  try {
-    execFileSync("/usr/bin/env", ["which", binary], { stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function doctor() {
   const paths = resolvePaths();
-  const ghosttyApp = process.platform === "darwin" && fs.existsSync("/Applications/Ghostty.app");
+  const ghostty = detectGhostty();
   const checks = [
     ["Node.js 20+", Number(process.versions.node.split(".")[0]) >= 20, process.version],
-    ["Ghostty", ghosttyApp || binaryExists("ghostty"), ghosttyApp ? "/Applications/Ghostty.app" : "PATH"],
+    ["Ghostty", ghostty.installed, ghostty.where || "not found — themes still export to other terminals"],
     ["Config directory", fs.existsSync(path.dirname(paths.config)), path.dirname(paths.config)],
     ["Writable home", (() => { try { fs.accessSync(path.dirname(paths.termdeckHome), fs.constants.W_OK); return true; } catch { return false; } })(), paths.termdeckHome],
   ];

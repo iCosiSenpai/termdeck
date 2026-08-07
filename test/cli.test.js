@@ -92,3 +92,27 @@ test("a pending update is never applied without a confirmation", () => {
   assert.equal(fs.existsSync(env.TERMDECK_GHOSTTY_CONFIG), false, "no configuration was touched");
   remove();
 });
+
+test("applying without Ghostty says the file will go unread", () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "termdeck-cli-noghostty-"));
+  const config = path.join(home, "ghostty", "config");
+  const absent = {
+    HOME: home,
+    TERMDECK_HOME: path.join(home, "termdeck"),
+    TERMDECK_GHOSTTY_CONFIG: config,
+    TERMDECK_GHOSTTY_APP: path.join(home, "nowhere", "Ghostty.app"),
+    // Keeps `which ghostty` from finding an installation this machine may have.
+    PATH: "/usr/bin:/bin",
+  };
+
+  const output = termdeck(["apply", "nordic-aurora", "--profile", "focus"], absent);
+  assert.match(output, /✓ Applied Nordic Aurora with the focus profile/, "the file is still written");
+  assert.match(output, /! Ghostty is not installed, so nothing reads this file yet/);
+  assert.match(output, /termdeck export nordic-aurora --target NAME/, "and the way that does work is named");
+  assert.doesNotMatch(output, /reloaded/, "a terminal that is not installed is not reloaded");
+  assert.ok(fs.readFileSync(config, "utf8").includes("Nordic Aurora"), "the managed block was written all the same");
+
+  assert.match(termdeck(["doctor"], absent), /! Ghostty {12}not found — themes still export to other terminals/);
+
+  fs.rmSync(home, { recursive: true, force: true });
+});

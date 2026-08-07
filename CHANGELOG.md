@@ -4,6 +4,11 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 
 ## [Unreleased]
 
+### Termdeck
+
+- Stopped reporting a plain success when Ghostty is not installed: `termdeck apply` still writes the managed block, then says the file will go unread and names the export that reaches the terminal you are actually using. The Control Center says the same in its status row and on the destination line, and neither spawns a reload for a terminal that is not there.
+- Made the Ghostty bundle location overridable with `TERMDECK_GHOSTTY_APP`, so an installation outside `/Applications` is recognised.
+
 ## [0.4.0] - 2026-08-07
 
 ### Termdeck

@@ -2,7 +2,7 @@ import readline from "node:readline";
 import { loadThemes, packageMetadata, pickRandomTheme } from "./catalog.js";
 import { defaultOutput, targets } from "./exporters.js";
 import { writeThemeExport } from "./export-package.js";
-import { applyGhostty, readState, reloadGhostty, resolvePaths } from "./ghostty.js";
+import { applyGhostty, detectGhostty, readState, reloadGhostty, resolvePaths } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
 import { dismissUpdate } from "./updates.js";
 import { createPalette, blend, crop, detectDepth, displayWidth, pad, tokens } from "./ui/ansi.js";
@@ -290,7 +290,7 @@ function showcase({ theme, palette, profile, profileName, width, budget, compact
  * When the pane has rows to spare it also names the file Enter would rewrite, so
  * the deck never changes a configuration the reader has not seen the path of.
  */
-function detailPanel({ theme, palette, profile, profileName, profileIndex, width, height, compact, destination }) {
+function detailPanel({ theme, palette, profile, profileName, profileIndex, width, height, compact, destination, ghostty = true }) {
   const { bold, dim, gold, muted, reset } = palette;
   const header = [
     `${bold}${palette.fg(theme.cursor)}${crop(theme.name.toUpperCase(), width - 9)}${reset}  ${dim}v${theme.version}${reset}`,
@@ -308,7 +308,10 @@ function detailPanel({ theme, palette, profile, profileName, profileIndex, width
   const budget = height - header.length - selector.length - 2;
   const rows = [...header, "", ...selector, "", ...showcase({ theme, palette, profile, profileName, width, budget, compact })];
   if (destination && height - rows.length >= 2) {
-    rows.push("", `${dim}ENTER writes ${crop(destination, Math.max(12, width - 13))}${reset}`);
+    const suffix = `${dim} — unread without Ghostty${reset}`;
+    rows.push("", ghostty
+      ? `${dim}ENTER writes ${crop(destination, Math.max(12, width - 13))}${reset}`
+      : `${gold}ENTER writes ${crop(destination, Math.max(12, width - 39))}${reset}${suffix}`);
   }
   return rows;
 }
@@ -395,13 +398,16 @@ function updatePanel(palette, width, updates) {
  * answers the only question the rest of the deck cannot: what is actually applied
  * to Ghostty right now.
  */
-function statusLine({ theme, active, message, palette }) {
+function statusLine({ theme, active, message, ghostty = true, palette }) {
   const { cyan, dim, gold, mint, reset } = palette;
   if (message) {
     const tone = message.startsWith("✓") ? mint : message.startsWith("…") ? cyan : gold;
     return `${tone}${message}${reset}`;
   }
   if (!theme) return `${gold}Nothing matches that filter — press Esc to clear it${reset}`;
+  // Nothing else on screen matters as much: without Ghostty, Enter writes a file
+  // no terminal on this machine will read.
+  if (!ghostty) return `${gold}Ghostty not found — press X to export these themes for the terminal you use${reset}`;
   if (!active) return `${gold}Nothing applied yet — press ENTER to apply ${theme.name}${reset}`;
   return `${dim}Applied: ${mint}${active.theme}${reset}${dim} · ${active.profile}${active.themeVersion ? ` · v${active.themeVersion}` : ""}${reset}`;
 }
@@ -411,7 +417,7 @@ function statusLine({ theme, active, message, palette }) {
  * pure functions of the state, and the frame decides where they go, so a small
  * terminal drops content instead of drawing over the controls.
  */
-export function buildFrame({ themes, themeIndex, profileIndex, active, message, help = false, updates = null, showingUpdate = false, filter = "", filtering = false, destination = null, columns = 100, rows = 30, depth = 24 }) {
+export function buildFrame({ themes, themeIndex, profileIndex, active, message, help = false, updates = null, showingUpdate = false, filter = "", filtering = false, destination = null, ghostty = true, columns = 100, rows = 30, depth = 24 }) {
   const palette = createPalette(depth);
   const { dim, muted, reset } = palette;
   const width = Math.max(64, columns);
@@ -453,7 +459,7 @@ export function buildFrame({ themes, themeIndex, profileIndex, active, message, 
 
   const catalogRows = catalogPanel({ themes, themeIndex, active, palette, width: leftPanelWidth, height: bodyHeight, narrow, filter, filtering });
   const detailRows = theme
-    ? detailPanel({ theme, profile, profileName, profileIndex, palette, width: rightPanelWidth, height: bodyHeight, compact, destination })
+    ? detailPanel({ theme, profile, profileName, profileIndex, palette, width: rightPanelWidth, height: bodyHeight, compact, destination, ghostty })
     : [`${muted}Nothing to preview.${reset}`, "", `${dim}Refine the filter or press Esc to clear it.${reset}`];
   for (let index = 0; index < bodyHeight; index += 1) {
     const segments = [];
@@ -463,7 +469,7 @@ export function buildFrame({ themes, themeIndex, profileIndex, active, message, 
   }
 
   set(keysRow, [{ column: margin, value: keyHints(palette, filtering ? filterBindings : bindings, compact, Boolean(updates?.available)) }]);
-  set(statusRow, [{ column: margin, value: crop(statusLine({ theme, active, message, palette }), width - 6) }]);
+  set(statusRow, [{ column: margin, value: crop(statusLine({ theme, active, message, ghostty, palette }), width - 6) }]);
 
   const modal = help ? helpPanel(palette, width) : showingUpdate && updates?.available ? updatePanel(palette, width, updates) : null;
   if (modal) {
@@ -517,7 +523,7 @@ function attempt(action) {
   }
 }
 
-export function openDashboard({ input = process.stdin, output = process.stdout, checkForUpdates = null, reload = reloadGhostty } = {}) {
+export function openDashboard({ input = process.stdin, output = process.stdout, checkForUpdates = null, reload = reloadGhostty, ghostty = detectGhostty().installed } = {}) {
   const themes = loadThemes();
   const names = Object.keys(profiles);
   let active = readState();
@@ -591,6 +597,7 @@ export function openDashboard({ input = process.stdin, output = process.stdout, 
           filter,
           filtering,
           destination,
+          ghostty,
           columns: output.columns,
           rows: output.rows,
           depth,
@@ -621,8 +628,11 @@ export function openDashboard({ input = process.stdin, output = process.stdout, 
       const profileName = names[profileIndex];
       try {
         applyGhostty({ theme, profile: getProfile(profileName), profileName, font: active?.font || null });
-        const outcome = reload();
         active = readState();
+        // Reloading a terminal that is not installed is not worth a subprocess,
+        // and reporting plain success would be a lie.
+        if (!ghostty) return `! Written, but Ghostty is not installed — press X to export ${theme.name} instead`;
+        const outcome = reload();
         return outcome.reloaded
           ? `✓ ${theme.name} + ${profileName} applied — Ghostty reloaded`
           : `✓ Applied — press ⌘⇧, to reload Ghostty (${outcome.reason})`;

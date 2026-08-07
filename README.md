@@ -173,7 +173,7 @@ Every export places its wallpaper beside the generated configuration (or in an a
 
 ### Installing an exported package
 
-**Ghostty is the only terminal Termdeck configures for you.** `termdeck apply` writes its managed block directly. For the other six, `termdeck export` and <kbd>X</kbd> write a package into `./dist/<terminal>/` and stop there — Termdeck never edits another terminal's configuration on your behalf. Installing one is a single step:
+**Ghostty is the only terminal Termdeck configures for you.** `termdeck apply` writes its managed block directly, and says so plainly when Ghostty is not installed rather than reporting a success nothing will read. For the other six, `termdeck export` and <kbd>X</kbd> write a package into `./dist/<terminal>/` and stop there — Termdeck never edits another terminal's configuration on your behalf. Installing one is a single step:
 
 | Terminal | Install the exported package |
 | --- | --- |

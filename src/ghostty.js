@@ -120,6 +120,23 @@ export function readState(env = process.env) {
   }
 }
 
+/**
+ * Whether Ghostty is present, and where it was found. The bundle location can be
+ * overridden the same way the config path can, so an unusual installation is
+ * recognised and the absent case stays reachable in a test.
+ */
+export function detectGhostty({ platform = process.platform, env = process.env, exists = fs.existsSync, run = execFileSync } = {}) {
+  const bundle = env.TERMDECK_GHOSTTY_APP || (platform === "darwin" ? "/Applications/Ghostty.app" : null);
+  if (bundle && exists(bundle)) return { installed: true, where: bundle };
+  try {
+    const found = String(run("/usr/bin/env", ["which", "ghostty"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })).trim();
+    if (found) return { installed: true, where: found };
+  } catch {
+    // Not on PATH, which is an answer rather than a failure.
+  }
+  return { installed: false, where: null };
+}
+
 export function reloadGhostty({ platform = process.platform, run = execFileSync } = {}) {
   if (platform !== "darwin") return { reloaded: false, reason: "automatic reload is available on macOS only" };
   const script = [
