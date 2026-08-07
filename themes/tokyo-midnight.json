@@ -12,6 +12,10 @@
   "selectionForeground": "#F4F5FF",
   "wallpaper": "assets/wallpapers/tokyo-midnight.png",
   "wallpaperOpacity": "0.17",
+  "provenance": {
+    "type": "original",
+    "artworkLicense": "MIT"
+  },
   "palette": [
     "#151628", "#F7768E", "#73DACA", "#E0AF68", "#7AA2F7", "#BB9AF7", "#7DCFFF", "#A9B1D6",
     "#414868", "#FF8FA3", "#8BF0DD", "#F4C982", "#91B4FF", "#CBAEFF", "#98E1FF", "#DCE5FF"

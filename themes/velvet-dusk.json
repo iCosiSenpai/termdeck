@@ -12,6 +12,10 @@
   "selectionForeground": "#FFF5FA",
   "wallpaper": "assets/wallpapers/velvet-dusk.png",
   "wallpaperOpacity": "0.16",
+  "provenance": {
+    "type": "original",
+    "artworkLicense": "MIT"
+  },
   "palette": [
     "#211827", "#E06C88", "#9CCDA8", "#E5C890", "#8AADF4", "#C6A0F6", "#91D7E3", "#D7CAD9",
     "#65546A", "#F08AA2", "#B5E1BC", "#F2D6A2", "#A5C2FA", "#D8B8FF", "#AAE6EE", "#FFF6FD"

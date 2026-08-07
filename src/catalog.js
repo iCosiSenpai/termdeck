@@ -45,7 +45,35 @@ export function validateTheme(theme, source = "theme") {
   }
   if (!/^[0-9]+\.[0-9]+\.[0-9]+$/.test(theme.version)) throw new Error(`${source}: version must use SemVer`);
   if (!["core", "special"].includes(theme.category)) throw new Error(`${source}: category must be core or special`);
+  validateProvenance(theme, source);
   for (const color of [theme.background, theme.foreground, theme.cursor, theme.selectionBackground, ...theme.palette]) {
     if (!/^#[0-9a-f]{6}$/i.test(color)) throw new Error(`${source}: invalid color ${color}`);
+  }
+}
+
+function validateProvenance(theme, source) {
+  const provenance = theme.provenance;
+  if (!provenance || typeof provenance !== "object") {
+    throw new Error(`${source}: missing provenance`);
+  }
+  if (!["original", "fan-art"].includes(provenance.type)) {
+    throw new Error(`${source}: provenance type must be original or fan-art`);
+  }
+  if (!provenance.artworkLicense) {
+    throw new Error(`${source}: provenance must declare artworkLicense`);
+  }
+  if (theme.category === "core" && provenance.type !== "original") {
+    throw new Error(`${source}: Core themes must use original artwork`);
+  }
+  if (theme.category === "special" && provenance.type !== "fan-art") {
+    throw new Error(`${source}: Special Editions must declare fan-art provenance`);
+  }
+  if (provenance.type === "fan-art") {
+    for (const key of ["property", "rightsHolder", "sourceUrl"]) {
+      if (!provenance[key]) throw new Error(`${source}: fan-art provenance must declare ${key}`);
+    }
+    if (!/^https:\/\//.test(provenance.sourceUrl)) {
+      throw new Error(`${source}: provenance sourceUrl must use HTTPS`);
+    }
   }
 }

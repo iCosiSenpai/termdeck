@@ -12,6 +12,10 @@
   "selectionForeground": "#FFF4E8",
   "wallpaper": "assets/wallpapers/ember-forge.png",
   "wallpaperOpacity": "0.15",
+  "provenance": {
+    "type": "original",
+    "artworkLicense": "MIT"
+  },
   "palette": [
     "#1D1916", "#E65F5C", "#89B482", "#E3B562", "#6699CC", "#C17AC8", "#78B9B4", "#D4C7BA",
     "#66584D", "#FF7A70", "#A2CA98", "#F3CC78", "#82B1DF", "#D696DD", "#96D3CE", "#FFF4E8"

@@ -12,6 +12,10 @@
   "selectionForeground": "#ECEFF4",
   "wallpaper": "assets/wallpapers/nordic-aurora.png",
   "wallpaperOpacity": "0.16",
+  "provenance": {
+    "type": "original",
+    "artworkLicense": "MIT"
+  },
   "palette": [
     "#171C26", "#D06F79", "#8FBC8F", "#EBCB8B", "#729FCF", "#B48EAD", "#7FC8D6", "#D8DEE9",
     "#4C566A", "#E58A94", "#A3D3A3", "#F1D79E", "#8EB6E1", "#C7A4C2", "#9ADCE7", "#F5F7FA"

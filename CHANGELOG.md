@@ -16,6 +16,7 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 - Stopped all terminal profiles from overriding the user's font size; Ghostty now keeps its stock or user-configured value.
 - Added the original Termdeck stacked-terminal icon, a transparent GitHub asset, and a universal Unicode mark in the Control Center header.
 - Established granitic commit rules for durable, atomic checkpoints and release isolation.
+- Made artwork provenance mandatory catalog metadata and added an automatically verified wallpaper notice for future themes.
 
 ## [0.3.0] - 2026-08-07
 

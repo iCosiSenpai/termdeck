@@ -208,14 +208,15 @@ termdeck uninstall
 <details>
 <summary><strong>Theme authoring and preview generation</strong></summary>
 
-Theme definitions live in `themes/*.json` and require a SemVer version, category, order, wallpaper, foreground/background colors, cursor, selection colors, and exactly sixteen ANSI colors.
+Theme definitions live in `themes/*.json` and require a SemVer version, category, order, wallpaper, provenance, foreground/background colors, cursor, selection colors, and exactly sixteen ANSI colors.
 
 ```sh
 npm run previews
+npm run notices
 npm run check
 ```
 
-`npm run previews` deterministically rebuilds every terminal screenshot from the real theme metadata and wallpaper. Artwork must be original or have an explicit redistributable license and provenance.
+`npm run previews` deterministically rebuilds every terminal screenshot from the real theme metadata and wallpaper. `npm run notices` generates the legal artwork inventory from that same catalog. Missing or incomplete provenance makes `npm run check` fail, so future themes cannot be added without attribution.
 
 </details>
 
@@ -227,7 +228,7 @@ npm run check
 - **Author:** [github.com/iCosiSenpai](https://github.com/iCosiSenpai)
 - **Issues and ideas:** [Termdeck issue tracker](https://github.com/iCosiSenpai/termdeck/issues)
 
-Source code and Core Theme data are MIT licensed. Core wallpaper artwork is original and distributed with Termdeck; Special Edition rights and attribution are documented alongside their assets. Resonant Rover is unofficial fan work and is not affiliated with or endorsed by Kuro Games. See [the wallpaper notice](assets/wallpapers/NOTICE.md).
+Source code, Core Theme data, and original Core artwork are MIT licensed. Special Editions are unofficial fan works; third-party names, characters, marks, and source properties remain with their respective rights holders. Termdeck is not affiliated with or endorsed by those rights holders. Per-theme terms and attribution are generated from the catalog in the [wallpaper notice](assets/wallpapers/NOTICE.md).
 
 <div align="center">
 

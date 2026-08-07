@@ -12,6 +12,10 @@
   "selectionForeground": "#F2FFFB",
   "wallpaper": "assets/wallpapers/carbon-mono.png",
   "wallpaperOpacity": "0.18",
+  "provenance": {
+    "type": "original",
+    "artworkLicense": "MIT"
+  },
   "palette": [
     "#151819", "#C98080", "#8FBEA8", "#C5B68C", "#8FA9B8", "#AD9CB7", "#85B9B2", "#C5CBC8",
     "#4D5351", "#DEA0A0", "#A9D7C0", "#DDCEA2", "#AAC2CF", "#C5B6CD", "#A1D2CB", "#F0F5F2"

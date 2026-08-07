@@ -8,7 +8,8 @@
   },
   "scripts": {
     "test": "node --test",
-    "check": "node --check src/cli.js && node --check src/dashboard.js && node --check scripts/render-previews.js && node --test",
+    "check": "node --check src/cli.js && node --check src/dashboard.js && node --check scripts/render-previews.js && node --check scripts/render-wallpaper-notice.js && node scripts/render-wallpaper-notice.js --check && node --test",
+    "notices": "node scripts/render-wallpaper-notice.js",
     "previews": "node scripts/render-previews.js",
     "start": "node ./bin/termdeck.js"
   },

@@ -12,6 +12,10 @@
   "selectionForeground": "#FFFFFF",
   "wallpaper": "assets/wallpapers/cyber-circuit.png",
   "wallpaperOpacity": "0.16",
+  "provenance": {
+    "type": "original",
+    "artworkLicense": "MIT"
+  },
   "palette": [
     "#11131D", "#FF3B77", "#64F58D", "#FFD166", "#4D7CFE", "#E040FB", "#00D9E8", "#C8D7E3",
     "#4B5266", "#FF6B9A", "#8BFFAA", "#FFE28A", "#7B9CFF", "#F477FF", "#5CFAFF", "#FFFFFF"

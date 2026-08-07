@@ -12,6 +12,13 @@
   "selectionForeground": "#F2FBFF",
   "wallpaper": "assets/wallpapers/resonant-rover.png",
   "wallpaperOpacity": "0.20",
+  "provenance": {
+    "type": "fan-art",
+    "property": "Wuthering Waves",
+    "rightsHolder": "Kuro Games and respective rights holders",
+    "sourceUrl": "https://wutheringwaves.kurogames.com/",
+    "artworkLicense": "Not covered by the MIT License"
+  },
   "palette": [
     "#0D1220", "#D76B6E", "#70BDA3", "#D3B66F", "#548DBA", "#897BB5", "#5EBECD", "#BFCED6",
     "#3B4558", "#EE8584", "#8CD6BB", "#E5CA84", "#74AAD0", "#A495CC", "#7ED7E3", "#F0F7FA"
