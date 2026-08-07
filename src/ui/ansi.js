@@ -9,6 +9,8 @@
 
 export const ESC = "\u001b[";
 
+export const RESET = `${ESC}0m`;
+
 /** CSI sequences (colour, cursor motion) and OSC strings (titles, hyperlinks). */
 const ANSI_PATTERN = /\u001b\[[0-9;?]*[ -\/]*[@-~]|\u001b\][\s\S]*?(?:\u0007|\u001b\\)/g;
 
@@ -249,7 +251,7 @@ export function createPalette(depth = 24) {
   const palette = {
     depth,
     colored,
-    reset: `${ESC}0m`,
+    reset: RESET,
     bold: `${ESC}1m`,
     dim: `${ESC}2m`,
     invert: `${ESC}7m`,

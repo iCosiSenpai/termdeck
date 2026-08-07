@@ -2,11 +2,14 @@ import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import test from "node:test";
 import { loadThemes } from "../src/catalog.js";
-import { buildFrame, openDashboard, renderDashboard } from "../src/dashboard.js";
+import { buildFrame, openDashboard } from "../src/dashboard.js";
 import { displayWidth, stripAnsi } from "../src/ui/ansi.js";
 
+/** The whole frame as one searchable string. */
+const screenText = (state) => buildFrame(state).rows.join("\n");
+
 test("dashboard renders the selected theme, profiles, and controls", () => {
-  const output = renderDashboard({
+  const output = screenText({
     themes: loadThemes(),
     themeIndex: 2,
     profileIndex: 2,
@@ -29,7 +32,7 @@ test("dashboard renders the selected theme, profiles, and controls", () => {
 });
 
 test("dashboard has a compact layout", () => {
-  const output = renderDashboard({ themes: loadThemes(), themeIndex: 0, profileIndex: 0, columns: 70, rows: 22 });
+  const output = screenText({ themes: loadThemes(), themeIndex: 0, profileIndex: 0, columns: 70, rows: 22 });
   assert.match(output, /CONTROL CENTER/);
   assert.match(output, /Carbon M/);
   assert.match(output, /TERMINAL PROFILE/);
@@ -37,7 +40,7 @@ test("dashboard has a compact layout", () => {
 });
 
 test("dashboard stays readable without colour support", () => {
-  const output = renderDashboard({ themes: loadThemes(), themeIndex: 0, profileIndex: 0, columns: 120, rows: 32, depth: 1 });
+  const output = screenText({ themes: loadThemes(), themeIndex: 0, profileIndex: 0, columns: 120, rows: 32, depth: 1 });
   assert.doesNotMatch(output, /\u001b\[38;2;/);
   assert.doesNotMatch(output, /\u001b\[48;2;/);
   assert.match(output, /NORDIC AURORA/);
@@ -78,9 +81,9 @@ test("the catalog window keeps the selected theme on screen", () => {
 test("the footer hints and the keyboard guide come from one keymap", () => {
   const themes = loadThemes();
   const state = { themes, themeIndex: 0, profileIndex: 0, columns: 120, rows: 32 };
-  const wide = stripAnsi(renderDashboard(state));
-  const narrow = stripAnsi(renderDashboard({ ...state, columns: 70, rows: 22 }));
-  const guide = stripAnsi(renderDashboard({ ...state, help: true }));
+  const wide = stripAnsi(screenText(state));
+  const narrow = stripAnsi(screenText({ ...state, columns: 70, rows: 22 }));
+  const guide = stripAnsi(screenText({ ...state, help: true }));
 
   assert.match(wide, /R random/);
   assert.doesNotMatch(narrow, /random/);
@@ -90,7 +93,7 @@ test("the footer hints and the keyboard guide come from one keymap", () => {
   assert.match(guide, /╭─+╮/);
 });
 
-test("Escape restores the terminal and releases stdin", async () => {
+function fakeTerminal() {
   const input = new EventEmitter();
   input.isTTY = true;
   input.setRawMode = (value) => { input.rawMode = value; };
@@ -101,7 +104,21 @@ test("Escape restores the terminal and releases stdin", async () => {
   output.isTTY = true;
   output.columns = 100;
   output.rows = 30;
-  output.write = () => true;
+  output.written = [];
+  output.write = (value) => {
+    output.written.push(value);
+    return true;
+  };
+  output.flush = () => {
+    const value = output.written.join("");
+    output.written.length = 0;
+    return value;
+  };
+  return { input, output };
+}
+
+test("Escape restores the terminal and releases stdin", async () => {
+  const { input, output } = fakeTerminal();
 
   const closed = openDashboard({ input, output });
   input.emit("keypress", "\u001b", { name: "escape" });
@@ -112,4 +129,20 @@ test("Escape restores the terminal and releases stdin", async () => {
   assert.equal(input.rawMode, false);
   assert.equal(input.listenerCount("keypress"), 0);
   assert.equal(output.listenerCount("resize"), 0);
+});
+
+test("navigating repaints changed rows instead of clearing the screen", async () => {
+  const { input, output } = fakeTerminal();
+  const closed = openDashboard({ input, output });
+  assert.match(output.flush(), /\u001b\[2J/, "the first paint clears the screen once");
+
+  input.emit("keypress", "j", { name: "down" });
+  const patch = output.flush();
+  assert.match(patch, /^\u001b\[\?2026h/, "updates are wrapped in a synchronized frame");
+  assert.match(patch, /\u001b\[\?2026l$/);
+  assert.doesNotMatch(patch, /\u001b\[2J/, "navigation must not clear the whole screen");
+  assert.ok(patch.length > 0);
+
+  input.emit("keypress", "\u001b", { name: "escape" });
+  await closed;
 });

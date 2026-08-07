@@ -22,6 +22,8 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 - Rebuilt the Control Center from pure panels composed into one row per terminal line, so the catalog, live preview, and controls can no longer draw over each other on small terminals.
 - Added a scrolling viewport with hidden-item indicators to the theme catalog, keeping the selection on screen and the controls intact as the deck grows.
 - Generated the footer hints and the keyboard guide from a single keymap, and framed the guide as a proper modal.
+- Repainted only the Control Center rows that actually changed, inside a synchronized terminal frame, instead of clearing and redrawing the entire screen on every keystroke.
+- Coalesced terminal resize events into a single redraw so dragging a window no longer floods the terminal with full repaints.
 
 ### Theme releases
 

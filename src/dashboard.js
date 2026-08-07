@@ -4,8 +4,9 @@ import { defaultOutput, targets } from "./exporters.js";
 import { writeThemeExport } from "./export-package.js";
 import { applyGhostty, readState, reloadGhostty } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
-import { controls, createPalette, crop, detectDepth, displayWidth, move, pad, tokens } from "./ui/ansi.js";
+import { createPalette, crop, detectDepth, displayWidth, pad, tokens } from "./ui/ansi.js";
 import { composeRow, windowList } from "./ui/layout.js";
+import { createScreen } from "./ui/screen.js";
 
 const REPOSITORY = "github.com/iCosiSenpai/termdeck";
 const AUTHOR = "github.com/iCosiSenpai";
@@ -216,13 +217,6 @@ export function buildFrame({ themes, themeIndex, profileIndex, active, message, 
   return { rows: frame, width, height };
 }
 
-/** The complete frame as a single positioned string, used for the first paint. */
-export function renderDashboard(state) {
-  const { rows } = buildFrame(state);
-  const painted = rows.map((row, index) => (row ? `${move(index + 1, 1)}${row}` : "")).join("");
-  return `${controls.clearScreen}${controls.hideCursor}${painted}`;
-}
-
 function exportEverywhere(theme, profileName) {
   for (const target of targets) {
     const output = defaultOutput(theme, target);
@@ -241,22 +235,21 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
 
   if (!input.isTTY || !output.isTTY) throw new Error("The control center needs an interactive terminal. Use \"termdeck help\" for command mode.");
   const depth = detectDepth({ stream: output });
-  const { reset } = createPalette(depth);
+  const render = () => screen.paint(buildFrame({ themes, themeIndex, profileIndex, active, message, help: showingHelp, columns: output.columns, rows: output.rows, depth }).rows);
+  const screen = createScreen({ output, redraw: render });
+
   readline.emitKeypressEvents(input);
   input.setRawMode(true);
   input.resume();
-  output.write(controls.enterAltScreen);
-
-  const render = () => output.write(renderDashboard({ themes, themeIndex, profileIndex, active, message, help: showingHelp, columns: output.columns, rows: output.rows, depth }));
+  screen.open();
   render();
 
   return new Promise((resolve) => {
     const cleanup = () => {
       input.off("keypress", onKey);
-      output.off("resize", render);
       input.setRawMode(false);
       input.pause();
-      output.write(`${controls.showCursor}${controls.leaveAltScreen}${reset}`);
+      screen.close();
       resolve();
     };
     const onKey = (value, key = {}) => {
@@ -290,6 +283,5 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
       render();
     };
     input.on("keypress", onKey);
-    output.on("resize", render);
   });
 }
