@@ -18,6 +18,7 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 - Established granitic commit rules for durable, atomic checkpoints and release isolation.
 - Made artwork provenance mandatory catalog metadata and added an automatically verified wallpaper notice for future themes.
 - Parsed and validated the theme catalog once per process and shared it as immutable data instead of re-reading every theme file on each lookup.
+- Measured Control Center text in terminal columns and degraded its palette to 256-colour, 16-colour, and monochrome terminals instead of assuming truecolor.
 
 ### Theme releases
 

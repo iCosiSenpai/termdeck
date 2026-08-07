@@ -35,6 +35,15 @@ test("dashboard has a compact layout", () => {
   assert.match(output, /△.*△.*\[❯▮\]/s);
 });
 
+test("dashboard stays readable without colour support", () => {
+  const output = renderDashboard({ themes: loadThemes(), themeIndex: 0, profileIndex: 0, columns: 120, rows: 32, depth: 1 });
+  assert.doesNotMatch(output, /\u001b\[38;2;/);
+  assert.doesNotMatch(output, /\u001b\[48;2;/);
+  assert.match(output, /NORDIC AURORA/);
+  assert.match(output, /[░▒▓█]/);
+  assert.match(output, /\u001b\[7m\u001b\[1m 1 COZY /);
+});
+
 test("Escape restores the terminal and releases stdin", async () => {
   const input = new EventEmitter();
   input.isTTY = true;

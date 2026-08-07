@@ -4,43 +4,10 @@ import { defaultOutput, targets } from "./exporters.js";
 import { writeThemeExport } from "./export-package.js";
 import { applyGhostty, readState, reloadGhostty } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
+import { controls, createPalette, crop, detectDepth, move, pad, tokens } from "./ui/ansi.js";
 
-const ESC = "\u001b[";
-const reset = `${ESC}0m`;
-const bold = `${ESC}1m`;
-const dim = `${ESC}2m`;
-const cyan = `${ESC}38;2;103;232;249m`;
-const mint = `${ESC}38;2;120;230;200m`;
-const gold = `${ESC}38;2;229;181;103m`;
-const violet = `${ESC}38;2;187;154;247m`;
-const muted = `${ESC}38;2;116;128;151m`;
-const white = `${ESC}38;2;226;232;240m`;
-const panel = `${ESC}48;2;17;21;31m`;
-
-function rgb(hex, background = false) {
-  const value = hex.slice(1);
-  const [r, g, b] = [0, 2, 4].map((index) => Number.parseInt(value.slice(index, index + 2), 16));
-  return `${ESC}${background ? 48 : 38};2;${r};${g};${b}m`;
-}
-
-function crop(text, width) {
-  if (text.length <= width) return text;
-  return `${text.slice(0, Math.max(0, width - 1))}…`;
-}
-
-function pad(text, width) {
-  return crop(text, width).padEnd(width);
-}
-
-function swatch(hex, width = 4) {
-  return `${rgb(hex, true)}${" ".repeat(width)}${reset}`;
-}
-
-function move(row, column = 1) {
-  return `${ESC}${row};${column}H`;
-}
-
-function logo(compact = false) {
+function logo(palette, compact = false) {
+  const { bold, dim, reset, cyan, mint, violet, white } = palette;
   if (compact) return [`${violet}△${mint}△${cyan}[❯▮]${reset}  ${bold}${cyan}TERM${white}DECK${reset}  ${dim}// CONTROL CENTER  v${packageMetadata.version}${reset}`];
   return [
     ` ${violet}╭────╮${reset}  ${cyan}${bold}╺┳╸┏━╸┏━┓┏┳┓${white}  ╺┳┓┏━╸┏━╷╻┏${reset}`,
@@ -49,11 +16,14 @@ function logo(compact = false) {
   ];
 }
 
-function profileBar(selected, width) {
+function profileBar(palette, selected, width) {
+  const { bold, reset, ink, invert, muted, panel } = palette;
   const names = Object.keys(profiles);
   const chips = names.map((name, index) => {
     const label = width < 82 ? ` ${index + 1} ${name.slice(0, 5).toUpperCase()} ` : ` ${index + 1} ${name.toUpperCase()} `;
-    return index === selected ? `${rgb("#67E8F9", true)}${ESC}38;2;8;11;22m${bold}${label}${reset}` : `${panel}${muted}${label}${reset}`;
+    if (index !== selected) return `${panel}${muted}${label}${reset}`;
+    const highlight = palette.colored ? `${palette.bg(tokens.cyan)}${ink}` : invert;
+    return `${highlight}${bold}${label}${reset}`;
   });
   return `TERMINAL PROFILE  ${chips.join(" ")}`;
 }
@@ -65,7 +35,10 @@ function profileEffects(profile) {
   return `${opacity}% opacity · ${blur} · ${options["window-padding-x"]}×${options["window-padding-y"]} padding · ${options["cursor-style"]} cursor`;
 }
 
-export function renderDashboard({ themes, themeIndex, profileIndex, active, message, help = false, columns = 100, rows = 30 }) {
+export function renderDashboard({ themes, themeIndex, profileIndex, active, message, help = false, columns = 100, rows = 30, depth = 24 }) {
+  const palette = createPalette(depth);
+  const { bold, dim, reset, cyan, mint, gold, muted, white, panel } = palette;
+  const swatch = (hex, width) => palette.swatch(hex, width);
   const width = Math.max(64, columns);
   const height = Math.max(20, rows);
   const compact = width < 88 || height < 26;
@@ -75,10 +48,10 @@ export function renderDashboard({ themes, themeIndex, profileIndex, active, mess
   const leftWidth = compact ? 24 : 31;
   const rightColumn = leftWidth + 5;
   const rightWidth = Math.max(30, width - rightColumn - 2);
-  const lines = [`${ESC}2J${move(1)}${ESC}?25l`];
+  const lines = [`${controls.clearScreen}${move(1)}${controls.hideCursor}`];
   const write = (row, column, value) => lines.push(`${move(row, column)}${value}`);
 
-  logo(compact).forEach((line, index) => write(2 + index, 3, line));
+  logo(palette, compact).forEach((line, index) => write(2 + index, 3, line));
   const top = compact ? 4 : 6;
   write(top - 1, 3, `${dim}${crop(`github.com/iCosiSenpai/termdeck  •  github.com/iCosiSenpai  •  release v${packageMetadata.version}`, width - 6)}${reset}`);
   write(top, 3, `${muted}${"─".repeat(Math.max(20, width - 6))}${reset}`);
@@ -103,7 +76,7 @@ export function renderDashboard({ themes, themeIndex, profileIndex, active, mess
   }
 
   const detailTop = top + 3;
-  write(detailTop, rightColumn, `${bold}${rgb(theme.cursor)}${crop(theme.name.toUpperCase(), rightWidth)}${reset}`);
+  write(detailTop, rightColumn, `${bold}${palette.fg(theme.cursor)}${crop(theme.name.toUpperCase(), rightWidth)}${reset}`);
   write(detailTop + 1, rightColumn, `${muted}${crop(theme.description, rightWidth)}${reset}`);
   write(detailTop + 2, rightColumn, `${theme.category === "special" ? gold : cyan}${theme.category === "special" ? "◆ SPECIAL EDITION" : "CORE THEME"}${reset}  ${dim}theme v${theme.version}${reset}`);
   write(detailTop + 3, rightColumn, theme.palette.slice(0, 8).map((color) => swatch(color, compact ? 3 : 5)).join(" "));
@@ -115,7 +88,7 @@ export function renderDashboard({ themes, themeIndex, profileIndex, active, mess
   if (detailTop + 10 < footer) write(detailTop + 10, rightColumn, `${dim}${crop(profileEffects(profile), rightWidth)}${reset}`);
   if (theme.wallpaper && detailTop + 12 < footer) write(detailTop + 12, rightColumn, `${gold}◆ Wallpaper included${reset}  ${dim}Ghostty · WezTerm · Kitty · iTerm2 · Terminal · Warp${reset}`);
 
-  write(footer, 3, profileBar(profileIndex, width - 6));
+  write(footer, 3, profileBar(palette, profileIndex, width - 6));
   const keys = compact
     ? `${white}${bold}↑↓${reset}${muted} theme  ${white}${bold}←→${reset}${muted} profile  ${mint}${bold}ENTER${reset}${muted} apply  ${white}${bold}X${reset}${muted} export  ${white}${bold}?${reset}${muted} help  ${white}${bold}Q${reset}${muted} quit${reset}`
     : `${white}${bold}↑↓${reset}${muted} theme  ${white}${bold}←→ / 1–4${reset}${muted} profile  ${mint}${bold}ENTER${reset}${muted} apply  ${white}${bold}X${reset}${muted} export  ${white}${bold}R${reset}${muted} random  ${white}${bold}?${reset}${muted} help  ${white}${bold}Q${reset}${muted} quit${reset}`;
@@ -162,12 +135,14 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
   let showingHelp = false;
 
   if (!input.isTTY || !output.isTTY) throw new Error("The control center needs an interactive terminal. Use \"termdeck help\" for command mode.");
+  const depth = detectDepth({ stream: output });
+  const { reset } = createPalette(depth);
   readline.emitKeypressEvents(input);
   input.setRawMode(true);
   input.resume();
-  output.write(`${ESC}?1049h`);
+  output.write(controls.enterAltScreen);
 
-  const render = () => output.write(renderDashboard({ themes, themeIndex, profileIndex, active, message, help: showingHelp, columns: output.columns, rows: output.rows }));
+  const render = () => output.write(renderDashboard({ themes, themeIndex, profileIndex, active, message, help: showingHelp, columns: output.columns, rows: output.rows, depth }));
   render();
 
   return new Promise((resolve) => {
@@ -176,7 +151,7 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
       output.off("resize", render);
       input.setRawMode(false);
       input.pause();
-      output.write(`${ESC}?25h${ESC}?1049l${reset}`);
+      output.write(`${controls.showCursor}${controls.leaveAltScreen}${reset}`);
       resolve();
     };
     const onKey = (value, key = {}) => {
