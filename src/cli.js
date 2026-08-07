@@ -5,6 +5,7 @@ import { getTheme, loadThemes } from "./catalog.js";
 import { defaultOutput, exportTheme, targets } from "./exporters.js";
 import { applyGhostty, readState, resolvePaths, uninstallGhostty } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
+import { openDashboard } from "./dashboard.js";
 
 const c = {
   cyan: "\u001b[36m",
@@ -19,6 +20,7 @@ function help() {
   console.log(`${c.bold}Termdeck${c.reset} — cinematic themes and modes for your terminal
 
 Usage:
+  termdeck                         Open the interactive control center
   termdeck list
   termdeck preview [theme]
   termdeck apply <theme> [--profile cozy|focus|glass|presentation] [--font NAME]
@@ -104,12 +106,18 @@ function doctor() {
 }
 
 export async function run(argv) {
-  const [command = "help", ...rest] = argv;
+  const [command, ...rest] = argv;
+  if (!command) {
+    if (process.stdin.isTTY && process.stdout.isTTY) await openDashboard();
+    else help();
+    return;
+  }
   const { positional, options } = parseOptions(rest);
   switch (command) {
     case "help":
     case "--help":
     case "-h": help(); break;
+    case "dashboard": await openDashboard(); break;
     case "list":
       console.log(`${c.bold}Theme deck${c.reset}\n`);
       for (const theme of loadThemes()) console.log(`  ${theme.palette.slice(8, 12).map((color) => swatch(color, 2)).join("")}  ${c.bold}${theme.slug.padEnd(20)}${c.reset} ${theme.description}`);

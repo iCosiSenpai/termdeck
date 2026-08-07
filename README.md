@@ -15,18 +15,37 @@ Termdeck keeps color and behavior separate:
 
 ## Install
 
-Clone the repository, then link the CLI:
+Homebrew is the recommended route:
 
 ```sh
-git clone https://github.com/iCosiSenpai/termdeck.git
-cd termdeck
-npm link
-termdeck doctor
+brew install iCosiSenpai/tap/termdeck
+termdeck
 ```
+
+The tap is the immediately available distribution channel. The short `brew install termdeck` command will become available when the formula is accepted into Homebrew/core.
+
+No Homebrew? Use the auditable fallback installer:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/iCosiSenpai/termdeck/main/install.sh | sh
+termdeck
+```
+
+The installer requires Node.js 20+ and places Termdeck in `~/.local/share/termdeck` with a launcher in `~/.local/bin`. It preserves an existing installation as a timestamped backup.
 
 Termdeck uses Ghostty's macOS config at `~/Library/Application Support/com.mitchellh.ghostty/config`. It creates the file if it does not exist and never replaces settings outside its clearly marked managed block.
 
 ## Use
+
+Just launch the control center:
+
+```sh
+termdeck
+```
+
+Use the arrow keys to browse themes and modes. The preview changes immediately; press <kbd>Enter</kbd> only when you want to apply the selection. `X` exports the selected palette for all supported terminals, `R` finds a random look, and `?` opens the keyboard guide.
+
+The original subcommands remain available for scripts and dotfiles:
 
 ```sh
 # Explore the deck
