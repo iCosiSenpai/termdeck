@@ -44,7 +44,7 @@ The fallback installer is intentionally small and auditable. It requires Node.js
 
 Running `termdeck` opens the full-screen deck. No theme names to memorize and no configuration file to hand-edit.
 
-The **Terminal Profile** is the behavior layer applied on top of the selected theme. It controls opacity, blur, padding, cursor, titlebar, and inactive-pane treatment; changing profile does not change the palette, artwork, or your font size. Its description and exact effects are displayed beside the active selection in the Control Center.
+The **Terminal Profile** is the behavior layer applied on top of the selected theme. It controls opacity, blur, padding, cursor, titlebar, and inactive-pane treatment; changing profile does not change the palette, artwork, or your font size. Its selector sits inside the pane it changes, directly above the Live Preview, and the window reshapes itself as you switch: the title bar appears as a tab strip, as bare window buttons, or not at all; the content indents by the profile's padding; the cursor is drawn as a block, a bar, or a hollow block. Opacity and blur are stated as numbers rather than faked, because a terminal cannot be translucent inside another terminal.
 
 | Key | Action |
 | :---: | --- |
@@ -52,14 +52,17 @@ The **Terminal Profile** is the behavior layer applied on top of the selected th
 | <kbd>←</kbd> <kbd>→</kbd> | Switch the Terminal Profile: Cozy, Focus, Glass, or Presentation |
 | <kbd>Enter</kbd> | Apply the selected theme and profile to Ghostty |
 | <kbd>X</kbd> | Export the full native package for every supported terminal |
-| <kbd>/</kbd> | Filter the catalog by typing; <kbd>Esc</kbd> clears the filter |
+| <kbd>/</kbd> | Filter the catalog by typing; the query and its match count sit above the results, <kbd>Esc</kbd> clears |
 | <kbd>R</kbd> | Pick a random look |
 | <kbd>U</kbd> | Review the pending update, shown only when there is one |
 | <kbd>?</kbd> | Open the built-in keyboard guide |
+| <kbd>Q</kbd> | Close the Control Center; <kbd>Esc</kbd> does the same |
 
-The dashboard displays the Termdeck release, selected theme version, active setup, project repository, and author profile. Themes are previewed without touching Ghostty until you press <kbd>Enter</kbd>.
+The deck states each thing once. The theme pane carries the name, version, description, palette, profile selector, and live window of the selection; the status row carries what is currently applied to Ghostty, or an invitation to press <kbd>Enter</kbd> when nothing is. Where the pane has rows to spare it also names the configuration file <kbd>Enter</kbd> would rewrite, so nothing changes on disk that you have not seen the path of. Themes are previewed without touching Ghostty until you press <kbd>Enter</kbd>.
 
-The **Live Preview** pane draws a miniature terminal window using the selected theme's own background, foreground, cursor, and ANSI palette, so a theme is judged in context rather than as a row of colour chips. The pane adapts to the space available and falls back to palette swatches on small terminals or where the terminal cannot render real colour.
+Every row of the catalog is tinted by the theme it names — its accent, its green, and its magenta, the three colours that actually differ across the deck — and the selection is a chip painted in that theme's own background and accent, so the list reads as a set of samples rather than a column of labels.
+
+The **Live Preview** pane draws a miniature terminal window using the selected theme's own background, foreground, cursor, and ANSI palette, so a theme is judged in context rather than as a row of colour chips. The window grows with the space available — from a three-line snippet to a full listing with the sixteen ANSI slots painted on the theme's own background — and falls back to palette swatches where the terminal cannot render real colour.
 
 ### Four profiles, every palette
 

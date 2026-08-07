@@ -211,6 +211,18 @@ function to16(hex) {
 
 const SHADES = [" ", "░", "▒", "▓", "█"];
 
+/**
+ * Mixes two colours. A terminal cannot be genuinely translucent, so a profile's
+ * opacity is shown by blending the pane towards what lies behind it.
+ */
+export function blend(from, to, weight) {
+  const amount = Math.min(1, Math.max(0, weight));
+  const left = channels(from);
+  const right = channels(to);
+  const mixed = left.map((value, index) => Math.round(value + (right[index] - value) * amount));
+  return `#${mixed.map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+}
+
 /** Depths FORCE_COLOR can request, following the widely used convention. */
 const FORCED_DEPTHS = { 0: 1, false: 1, 1: 4, true: 4, 2: 8, 3: 24 };
 

@@ -11,8 +11,11 @@ import { displayWidth, stripAnsi } from "../src/ui/ansi.js";
 /** The whole frame as one searchable string. */
 const screenText = (state) => buildFrame(state).rows.join("\n");
 
+/** The same frame with the styling removed, for asserting on what it reads as. */
+const plainText = (state) => stripAnsi(screenText(state));
+
 test("dashboard renders the selected theme, profiles, and controls", () => {
-  const output = screenText({
+  const output = plainText({
     themes: loadThemes(),
     themeIndex: 2,
     profileIndex: 2,
@@ -20,25 +23,62 @@ test("dashboard renders the selected theme, profiles, and controls", () => {
     columns: 120,
     rows: 32,
   });
-  assert.match(output, /TOKYO MIDNIGHT/);
+  assert.match(output, /TOKYO MIDNIGHT {2}v1\.0\.0/);
   assert.match(output, /GLASS/);
-  assert.match(output, /ENTER/);
-  assert.match(output, /LIVE PREVIEW/);
-  assert.match(output, /TERMINAL PROFILE/);
+  assert.match(output, /ENTER apply/);
+  assert.match(output, /PROFILE {3}1 COZY {3}2 FOCUS {3}3 GLASS {3}4 PRESENTATION/);
   assert.match(output, /Frosted macOS glass and visible artwork/);
   assert.match(output, /86% opacity/);
-  assert.match(output, /← → change/);
   assert.match(output, /CORE COLLECTION/);
   assert.match(output, /SPECIAL EDITIONS/);
   assert.match(output, /github\.com\/iCosiSenpai\/termdeck/);
   assert.match(output, /┤ ❯▮ │/);
 });
 
+test("the deck states each thing once and ends with its controls", () => {
+  const themes = loadThemes();
+  const frame = buildFrame({
+    themes,
+    themeIndex: 2,
+    profileIndex: 2,
+    active: { theme: "nordic-aurora", profile: "cozy", themeVersion: "1.0.0" },
+    destination: "~/Library/Application Support/com.mitchellh.ghostty/config",
+    columns: 120,
+    rows: 36,
+  });
+  const plain = stripAnsi(frame.rows.join("\n"));
+
+  const occurrences = (pattern) => plain.match(pattern)?.length ?? 0;
+  assert.equal(occurrences(/PROFILE/g), 1, "the profile selector is titled in exactly one place");
+  assert.equal(occurrences(/v0\.3\.0/g), 1, "the release version is stated once");
+  assert.doesNotMatch(plain, /Wallpaper included/, "a note that is true of every theme is not information");
+  assert.doesNotMatch(plain, /Selected:/, "the marker and the pane title already say what is selected");
+
+  // The selector sits inside the pane it changes, above its own description.
+  const paneRows = plain.split("\n");
+  const selector = paneRows.findIndex((row) => /PROFILE {3}1 COZY/.test(row));
+  assert.ok(selector > 0, "the selector is in the theme pane, not adrift in the footer");
+  assert.match(paneRows[selector + 1], /Frosted macOS glass and visible artwork · 86% opacity/);
+  assert.match(paneRows[selector + 3], /╭─ tokyo-midnight/, "and directly above the window it shapes");
+
+  // The foot of the deck carries only the keys and the last outcome.
+  assert.match(stripAnsi(frame.rows.at(-3)), /^ {2}ENTER apply/);
+  assert.match(stripAnsi(frame.rows.at(-2)), /Applied: nordic-aurora · cozy · v1\.0\.0/);
+
+  assert.match(plain, /ENTER writes ~\/Library\/Application Support\/com\.mitchellh\.ghostty\/config/, "the deck names the file it would rewrite");
+});
+
+test("a deck with nothing applied says what to press", () => {
+  const themes = loadThemes();
+  const plain = stripAnsi(buildFrame({ themes, themeIndex: 2, profileIndex: 0, columns: 100, rows: 30 }).rows.join("\n"));
+  assert.match(plain, /Nothing applied yet — press ENTER to apply Tokyo Midnight/);
+});
+
 test("dashboard has a compact layout", () => {
   const output = screenText({ themes: loadThemes(), themeIndex: 0, profileIndex: 0, columns: 70, rows: 22 });
   assert.match(output, /CONTROL CENTER/);
-  assert.match(output, /Carbon M/);
-  assert.match(output, /TERMINAL PROFILE/);
+  assert.match(output, /Carbon Mono/);
+  assert.match(output, /PROFILE/);
   assert.match(output, /△.*△.*\[❯▮\]/s);
 });
 
@@ -67,8 +107,8 @@ test("panels never overflow the terminal or overwrite the controls", () => {
     for (const row of frame.rows) {
       assert.ok(displayWidth(row) <= frame.width, `a row exceeded ${frame.width} columns at ${columns}x${rows}`);
     }
-    assert.match(frame.rows.at(-6), /TERMINAL PROFILE {2}/, `the profile bar lost its row at ${columns}x${rows}`);
-    assert.match(stripAnsi(frame.rows.at(-4)), /ENTER apply/, `the key hints lost their row at ${columns}x${rows}`);
+    assert.match(stripAnsi(frame.rows.join("\n")), /PROFILE/, `the profile selector vanished at ${columns}x${rows}`);
+    assert.match(stripAnsi(frame.rows.at(-3)), /ENTER apply/, `the key hints lost their row at ${columns}x${rows}`);
   }
 });
 
@@ -77,7 +117,18 @@ test("the catalog window keeps the selected theme on screen", () => {
   for (let themeIndex = 0; themeIndex < themes.length; themeIndex += 1) {
     const screen = buildFrame({ themes, themeIndex, profileIndex: 0, columns: 64, rows: 20 }).rows.join("\n");
     assert.match(screen, new RegExp(`▶.*${themes[themeIndex].name}`), `${themes[themeIndex].slug} scrolled out of view`);
-    assert.match(screen, /[▴▾] \d+ (above|below)/);
+  }
+
+  // The deck will gain themes; the list must scroll instead of pushing the
+  // controls off the screen.
+  const crowded = Array.from({ length: 40 }, (_, index) => ({ ...themes[index % themes.length], slug: `theme-${index}`, name: `Theme ${index}` }));
+  for (const themeIndex of [0, 20, crowded.length - 1]) {
+    const frame = buildFrame({ themes: crowded, themeIndex, profileIndex: 0, columns: 64, rows: 20 });
+    const screen = stripAnsi(frame.rows.join("\n"));
+    assert.match(screen, new RegExp(`▶.*Theme ${themeIndex}\\b`), `Theme ${themeIndex} scrolled out of view`);
+    assert.match(screen, /[▴▾] \d+ (above|below)/, "hidden entries are counted");
+    assert.match(stripAnsi(frame.rows.at(-3)), /ENTER apply/, "the controls keep their row");
+    for (const row of frame.rows) assert.ok(displayWidth(row) <= frame.width);
   }
 });
 
@@ -120,11 +171,16 @@ function fakeTerminal() {
   return { input, output };
 }
 
+/** The exact truecolor escape a hex produces, for asserting on what got painted. */
+const colorEscape = (hex, layer) => `\u001b[${layer};2;${[1, 3, 5].map((index) => Number.parseInt(hex.slice(index, index + 2), 16)).join(";")}m`;
+const backgroundOf = (hex) => colorEscape(hex, 48);
+const foregroundOf = (hex) => colorEscape(hex, 38);
+
 test("the live preview is a terminal window painted in the theme's own colours", () => {
   const themes = loadThemes();
   const theme = themes[2];
-  const background = (hex) => `\u001b[48;2;${[1, 3, 5].map((index) => Number.parseInt(hex.slice(index, index + 2), 16)).join(";")}m`;
-  const frame = buildFrame({ themes, themeIndex: 2, profileIndex: 2, columns: 120, rows: 32 });
+  // Focus is the fully opaque profile, so the pane is the theme background itself.
+  const frame = buildFrame({ themes, themeIndex: 2, profileIndex: 1, columns: 120, rows: 32 });
   const plain = stripAnsi(frame.rows.join("\n"));
 
   assert.equal(theme.slug, "tokyo-midnight");
@@ -132,24 +188,77 @@ test("the live preview is a terminal window painted in the theme's own colours",
   assert.match(plain, /❯ termdeck apply tokyo-midnight/);
   assert.match(plain, /theme = tokyo-midnight/);
   assert.match(plain, new RegExp(`background = ${theme.background}`));
-  assert.match(plain, /profile = glass/, "the preview follows the selected profile");
+  assert.match(plain, /profile = focus/, "the preview follows the selected profile");
   assert.match(plain, /✓ palette applied/);
 
   const pane = frame.rows.find((row) => stripAnsi(row).includes("theme = tokyo-midnight"));
-  assert.ok(pane.includes(background(theme.background)), "the pane is filled with the theme background");
+  assert.ok(pane.includes(backgroundOf(theme.background)), "the pane is filled with the theme background");
   const status = frame.rows.find((row) => stripAnsi(row).includes("✓ palette applied"));
-  assert.ok(status.includes(background(theme.cursor)), "the block cursor is painted with the theme cursor colour");
+  assert.ok(status.includes(foregroundOf(theme.cursor)), "the cursor is drawn in the theme cursor colour");
 });
 
-test("the live preview shrinks with the pane and gives way to swatches", () => {
+test("the profile shapes the live preview instead of only being described", () => {
+  const themes = loadThemes();
+  const frame = (profileIndex) => buildFrame({ themes, themeIndex: 2, profileIndex, columns: 120, rows: 34 });
+  const screen = (profileIndex) => stripAnsi(frame(profileIndex).rows.join("\n"));
+  const [cozy, focus, glass, presentation] = [0, 1, 2, 3].map(screen);
+
+  // The title bar exists only for the profiles that keep macOS chrome.
+  assert.match(cozy, /● ● ●/, "cozy keeps the title bar");
+  assert.doesNotMatch(focus, /● ● ●/, "focus hides it");
+  assert.match(cozy, /▏ tokyo-midnight ▏/, "a tabbed title bar shows its tab");
+  assert.doesNotMatch(glass, /▏ tokyo-midnight ▏/, "a transparent one does not");
+
+  // The cursor is drawn as the shape the profile asks for.
+  assert.match(cozy, /❯ █/, "block");
+  assert.match(focus, /❯ ▏/, "bar");
+  assert.match(glass, /❯ ▯/, "hollow block");
+  assert.match(presentation, /❯ █/, "block");
+
+  // Padding becomes an indent that grows with the profile.
+  const indent = (text) => text.split("\n").find((row) => row.includes("❯ termdeck apply")).match(/│( +)❯/)[1].length;
+  assert.ok(indent(presentation) > indent(cozy), "presentation is the roomiest profile");
+  assert.ok(indent(focus) > indent(cozy), "and cozy the tightest");
+
+  // Opacity becomes the one thing it honestly can: a tab bar that sits a shade
+  // above its pane, where the profile keeps one. The window rows share their
+  // frame row with the catalog, so the colour is read off the window's own edge.
+  const windowBackground = (row) => row.match(/\u001b\[48;2;[\d;]+m(?=\u001b\[38;2;[\d;]+m│)/g).at(-1);
+  const barColour = (profileIndex) => windowBackground(frame(profileIndex).rows.find((row) => stripAnsi(row).includes("● ● ●")));
+  const paneColour = (profileIndex) => windowBackground(frame(profileIndex).rows.find((row) => stripAnsi(row).includes("theme = tokyo-midnight")));
+  assert.equal(paneColour(1), backgroundOf(themes[2].background), "the pane is the theme background, never a faked translucency");
+  assert.equal(paneColour(0), paneColour(1), "whatever the profile");
+  assert.notEqual(barColour(0), paneColour(0), "a tab bar reads as its own surface");
+  assert.equal(barColour(2), paneColour(2), "a transparent title bar does not");
+});
+
+test("the live preview grows and shrinks with the pane, one whole snippet at a time", () => {
   const themes = loadThemes();
   const paneRows = (columns, rows, depth = 24) => stripAnsi(buildFrame({ themes, themeIndex: 2, profileIndex: 0, columns, rows, depth }).rows.join("\n"));
 
-  assert.match(paneRows(120, 32), /foreground = /, "the tallest pane shows the full listing");
-  assert.doesNotMatch(paneRows(88, 26), /foreground = /, "a shorter pane drops the optional lines");
-  assert.match(paneRows(88, 26), /❯ termdeck apply/, "but keeps the window itself");
-  assert.doesNotMatch(paneRows(70, 22), /╭─ /, "a short terminal falls back to swatches");
-  assert.match(paneRows(70, 22), /BACKGROUND/);
+  const tall = paneRows(120, 34);
+  assert.match(tall, /cursor = #FF7EDB/, "the tallest pane shows every colour it can name");
+  assert.match(tall, /selection = #302A5C/);
+
+  const medium = paneRows(100, 30);
+  assert.match(medium, /foreground = /, "a shorter pane keeps the listing");
+  assert.doesNotMatch(medium, /selection = /, "and drops the lines it has no room for");
+
+  const short = paneRows(88, 26);
+  assert.match(short, /background = /, "a shorter one keeps the essentials");
+  assert.doesNotMatch(short, /foreground = /);
+
+  const smallest = paneRows(64, 20);
+  assert.match(smallest, /❯ termdeck apply/, "the smallest pane is still a window");
+  assert.doesNotMatch(smallest, /background = /);
+
+  // A window is never left half-drawn: every size closes its own border.
+  for (const [columns, rows] of [[64, 20], [88, 26], [100, 30], [120, 36], [240, 60]]) {
+    const pane = paneRows(columns, rows);
+    assert.match(pane, /╭─ tokyo-midnight ─+╮/, `the window lost its top at ${columns}x${rows}`);
+    assert.match(pane, /╰─+╯/, `the window lost its bottom at ${columns}x${rows}`);
+  }
+
   assert.doesNotMatch(paneRows(120, 32, 1), /╭─ tokyo/, "a terminal without real colour falls back to swatches");
   assert.match(paneRows(120, 32, 1), /BACKGROUND/);
 });
@@ -167,10 +276,10 @@ test("the catalog filter matches names, slugs, descriptions, and categories", ()
 test("an empty filter result explains itself instead of breaking the frame", () => {
   const frame = buildFrame({ themes: [], themeIndex: 0, profileIndex: 0, filter: "zzz", filtering: true, columns: 100, rows: 30 });
   const plain = stripAnsi(frame.rows.join("\n"));
-  assert.match(plain, /THEMES {2}\/zzz/);
+  assert.match(plain, /\/zzz {3}0 matches/, "the query and its count sit above the results");
   assert.match(plain, /No theme matches/);
   assert.match(plain, /Nothing to preview/);
-  assert.match(plain, /press Esc to clear the filter/);
+  assert.match(plain, /press Esc to clear it/);
   for (const row of frame.rows) assert.ok(displayWidth(row) <= frame.width);
 });
 
@@ -181,16 +290,16 @@ test("typing narrows the catalog and Escape restores it", async () => {
 
   input.emit("keypress", "/", { name: "slash" });
   const opened = stripAnsi(output.flush());
-  assert.match(opened, /THEMES {2}\//, "the filter line opens");
+  assert.match(opened, /\/ {3}8 matches/, "the filter line opens above the results");
   assert.match(opened, /TYPE to filter/, "the hints switch to the filter keys");
 
   for (const character of "nord") input.emit("keypress", character, { name: character });
   const narrowed = stripAnsi(output.flush());
-  assert.match(narrowed, /THEMES {2}\/nord/);
+  assert.match(narrowed, /\/nord/);
   assert.match(narrowed, /1 match/);
 
   input.emit("keypress", "\u007f", { name: "backspace" });
-  assert.match(stripAnsi(output.flush()), /THEMES {2}\/nor/, "backspace edits the query");
+  assert.match(stripAnsi(output.flush()), /\/nor/, "backspace edits the query");
 
   input.emit("keypress", "\u001b", { name: "escape" });
   const cleared = stripAnsi(output.flush());
@@ -227,10 +336,10 @@ test("the update alert names every version and the exact command it would run", 
   assert.match(plain, /Runs:/);
   assert.match(plain, /brew upgrade iCosiSenpai\/tap\/termdeck/);
   assert.match(plain, /Y {2}update now {6}N {2}later/);
-  assert.match(stripAnsi(frame.rows.at(-4)), /U update/, "the footer advertises the key that reopens the alert");
+  assert.match(stripAnsi(frame.rows.at(-3)), /U update/, "the footer advertises the key that reopens the alert");
   for (const row of frame.rows) assert.ok(displayWidth(row) <= frame.width);
 
-  const withoutUpdate = stripAnsi(buildFrame(state).rows.at(-4));
+  const withoutUpdate = stripAnsi(buildFrame(state).rows.at(-3));
   assert.doesNotMatch(withoutUpdate, /U update/, "and hides it when there is nothing to update");
 
   const checkout = stripAnsi(buildFrame({

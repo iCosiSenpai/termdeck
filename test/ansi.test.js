@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createPalette, crop, detectDepth, displayWidth, pad, stripAnsi, tokens } from "../src/ui/ansi.js";
+import { blend, createPalette, crop, detectDepth, displayWidth, pad, stripAnsi, tokens } from "../src/ui/ansi.js";
 
 test("width is measured in terminal columns, not UTF-16 code units", () => {
   assert.equal(displayWidth("Carbon Mono"), 11);
@@ -53,4 +53,14 @@ test("colour depth follows the environment before the stream", () => {
   assert.equal(detectDepth({ stream: {}, env: { FORCE_COLOR: "1" } }), 4);
   assert.equal(detectDepth({ stream: { getColorDepth: () => 24 }, env: { FORCE_COLOR: "0" } }), 1);
   assert.equal(detectDepth({ stream: {}, env: { NO_COLOR: "1", FORCE_COLOR: "3" } }), 1, "NO_COLOR wins");
+});
+
+
+test("blending stays inside the two colours it was given", () => {
+  assert.equal(blend("#000000", "#ffffff", 0), "#000000");
+  assert.equal(blend("#000000", "#ffffff", 1), "#ffffff");
+  assert.equal(blend("#000000", "#ffffff", 0.5), "#808080");
+  assert.equal(blend("#0b0c18", "#c7d1f2", 0.1), "#1e202e", "a tenth of the way is still nearly the first colour");
+  assert.equal(blend("#0b0c18", "#ffffff", -1), "#0b0c18", "a weight below zero cannot invert the mix");
+  assert.equal(blend("#0b0c18", "#ffffff", 4), "#ffffff", "nor can one above one overshoot it");
 });

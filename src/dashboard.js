@@ -2,31 +2,34 @@ import readline from "node:readline";
 import { loadThemes, packageMetadata, pickRandomTheme } from "./catalog.js";
 import { defaultOutput, targets } from "./exporters.js";
 import { writeThemeExport } from "./export-package.js";
-import { applyGhostty, readState, reloadGhostty } from "./ghostty.js";
+import { applyGhostty, readState, reloadGhostty, resolvePaths } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
 import { dismissUpdate } from "./updates.js";
-import { createPalette, crop, detectDepth, displayWidth, pad, tokens } from "./ui/ansi.js";
+import { createPalette, blend, crop, detectDepth, displayWidth, pad, tokens } from "./ui/ansi.js";
 import { composeRow, windowList } from "./ui/layout.js";
 import { createScreen } from "./ui/screen.js";
 
 const REPOSITORY = "github.com/iCosiSenpai/termdeck";
-const AUTHOR = "github.com/iCosiSenpai";
+const AUTHOR = "iCosiSenpai";
 
 /**
  * Every binding, declared once. The footer renders the entries that carry a
  * `hint`; the keyboard guide renders the entries that carry a `guide`. Adding a
  * key in one place keeps both surfaces in agreement.
+ *
+ * The footer leads with the action, keeps navigation next, and leaves the power
+ * keys to the guide on narrow terminals, so it never becomes a wall of hints.
  */
 const bindings = [
-  { hint: "↑↓", label: "theme", guide: "↑ / ↓ or J / K", detail: "browse themes" },
-  { hint: "←→ / 1–4", compactHint: "←→", label: "profile", guide: "← / → or H / L", detail: "change terminal profile" },
-  { guide: "1–4", detail: "select a profile directly" },
   { hint: "ENTER", label: "apply", guide: "Enter", detail: "apply the selection to Ghostty", accent: true },
+  { hint: "↑↓", label: "theme", guide: "↑ / ↓ or J / K", detail: "browse themes" },
+  { hint: "←→", label: "profile", guide: "← / → or H / L", detail: "change terminal profile" },
+  { guide: "1–4", detail: "select a profile directly" },
   { hint: "X", label: "export", guide: "X", detail: "export the theme for every terminal" },
   { hint: "/", label: "filter", guide: "/", detail: "filter the catalog by typing", wideOnly: true },
   { hint: "R", label: "random", guide: "R", detail: "pick a random theme", wideOnly: true },
   { hint: "U", label: "update", guide: "U", detail: "review the available update", whenUpdate: true },
-  { hint: "?", label: "help", guide: "?", detail: "open or close this guide" },
+  { hint: "?", label: "keys", guide: "?", detail: "open or close this guide" },
   { hint: "Q", label: "quit", guide: "Q / Esc", detail: "close the control center" },
 ];
 
@@ -56,16 +59,30 @@ function logo(palette, compact = false) {
   ];
 }
 
+/**
+ * The four profiles as numbered chips. When the pane cannot hold every name only
+ * the selected chip is spelled out, so the selector never loses an option to a
+ * crop and the numbers keep working.
+ */
 function profileBar(palette, selected, width) {
   const { bold, reset, ink, invert, muted, panel } = palette;
   const names = Object.keys(profiles);
+  const label = `${muted}${bold}PROFILE${reset}  `;
+  const full = names.map((name, index) => ` ${index + 1} ${name.toUpperCase()} `);
+  const spelled = displayWidth(full.join(" ")) <= width - 9;
   const chips = names.map((name, index) => {
-    const label = ` ${index + 1} ${width < 82 ? crop(name.toUpperCase(), 5) : name.toUpperCase()} `;
-    if (index !== selected) return `${panel}${muted}${label}${reset}`;
+    const text = spelled || index === selected ? full[index] : ` ${index + 1} `;
+    if (index !== selected) return `${panel}${muted}${text}${reset}`;
     const highlight = palette.colored ? `${palette.bg(tokens.cyan)}${ink}` : invert;
-    return `${highlight}${bold}${label}${reset}`;
+    return `${highlight}${bold}${text}${reset}`;
   });
-  return `TERMINAL PROFILE  ${chips.join(" ")}`;
+  return `${label}${chips.join(" ")}`;
+}
+
+/** What the highlighted chip actually does, on the row beneath it. */
+function profileDetail(palette, profile, width) {
+  const { dim, reset, white } = palette;
+  return crop(`${white}${profile.label}${reset}${dim} · ${profileEffects(profile)}${reset}`, width);
 }
 
 function profileEffects(profile) {
@@ -79,20 +96,39 @@ function keyHints(palette, list, compact, hasUpdate = false) {
   const { bold, mint, muted, reset, white } = palette;
   const hints = list
     .filter((binding) => binding.hint && !(compact && binding.wideOnly) && !(binding.whenUpdate && !hasUpdate))
-    .map((binding) => {
-      const hint = compact ? binding.compactHint || binding.hint : binding.hint;
-      return `${binding.accent ? mint : white}${bold}${hint}${reset}${muted} ${binding.label}`;
-    });
+    .map((binding) => `${binding.accent ? mint : white}${bold}${binding.hint}${reset}${muted} ${binding.label}`);
   return `${hints.join("  ")}${reset}`;
 }
 
 /**
- * The theme catalog, windowed to the rows it was given so it can never grow into
- * the footer as the deck gains themes.
+ * Three colours per theme, chosen because they are the ones that actually differ
+ * across the catalog: the accent, then its green and magenta. The bright grey and
+ * red slots look alike in every theme and told the reader nothing.
  */
-function catalogPanel({ themes, themeIndex, active, palette, width, height, compact }) {
-  const { bold, cyan, dim, gold, mint, muted, reset, white } = palette;
-  if (themes.length === 0) return [`${gold}No theme matches${reset}`];
+function signature(theme, palette, narrow) {
+  const cells = narrow ? [3, 2] : [4, 3, 3];
+  return [theme.cursor, theme.palette[10], theme.palette[13]]
+    .slice(0, cells.length)
+    .map((color, index) => palette.swatch(color, cells[index]))
+    .join("");
+}
+
+/** Columns `signature` occupies, so the name beside it can claim the rest. */
+const signatureWidth = (narrow) => (narrow ? 5 : 10);
+
+/**
+ * The theme catalog, windowed to the rows it was given so it can never grow into
+ * the footer as the deck gains themes. Each row is tinted by the theme it names,
+ * and the selection is a chip painted in that theme's own background and accent,
+ * so the list reads as a set of samples rather than a column of labels. While
+ * filtering, the query and its match count sit directly above the results.
+ */
+function catalogPanel({ themes, themeIndex, active, palette, width, height, narrow, filter, filtering }) {
+  const { bold, cyan, dim, gold, invert, mint, muted, reset, white } = palette;
+  const query = filtering
+    ? [`${cyan}/${white}${bold}${crop(filter, Math.max(4, width - 14))}${invert} ${reset}${dim}  ${themes.length} match${themes.length === 1 ? "" : "es"}${reset}`]
+    : [];
+  if (themes.length === 0) return [...query, `${gold}No theme matches${reset}`];
   const entries = [];
   for (const category of ["core", "special"]) {
     const members = themes.filter((item) => item.category === category);
@@ -102,38 +138,61 @@ function catalogPanel({ themes, themeIndex, active, palette, width, height, comp
   }
 
   const selected = entries.findIndex((entry) => entry.kind === "theme" && entry.index === themeIndex);
-  const view = windowList(entries.length, Math.max(0, selected), height);
-  const swatches = compact ? 2 : 3;
-  const nameWidth = Math.max(6, width - 5 - swatches * 2);
+  const view = windowList(entries.length, Math.max(0, selected), height - query.length);
+  const nameWidth = Math.max(6, width - 4 - signatureWidth(narrow));
 
   const rows = entries.slice(view.start, view.end).map((entry) => {
     if (entry.kind === "category") {
       const special = entry.category === "special";
       return `${special ? gold : muted}${bold}${special ? "◆ SPECIAL EDITIONS" : "CORE COLLECTION"}${reset}`;
     }
+    const { theme } = entry;
     const current = entry.index === themeIndex;
-    const activeMark = entry.theme.slug === active?.theme ? `${mint}●${reset}` : " ";
+    const activeMark = theme.slug === active?.theme ? `${mint}●${reset}` : " ";
     const marker = current ? `${cyan}▶${reset}` : " ";
-    const colors = entry.theme.palette.slice(8, 8 + swatches).map((color) => palette.swatch(color, 2)).join("");
-    return `${marker} ${activeMark} ${colors} ${current ? bold + white : muted}${pad(entry.theme.name, nameWidth)}${reset}`;
+    const label = pad(` ${theme.name}`, nameWidth);
+    const name = current
+      ? `${palette.colored ? `${palette.bg(theme.background)}${palette.fg(theme.cursor)}` : invert}${bold}${label}${reset}`
+      : `${palette.colored ? palette.fg(theme.cursor) : muted}${label}${reset}`;
+    return `${marker} ${activeMark} ${signature(theme, palette, narrow)}${name}`;
   });
 
   if (view.scrolls) {
     const hidden = [view.start > 0 ? `▴ ${view.start} above` : null, entries.length - view.end > 0 ? `▾ ${entries.length - view.end} below` : null];
     rows.push(`${dim}${hidden.filter(Boolean).join(" · ")}${reset}`);
   }
-  return rows;
+  return [...query, ...rows];
+}
+
+/** The window chrome and spacing a profile asks for, translated to a mock's scale. */
+function profileChrome(profile, rows) {
+  const options = profile.options;
+  return {
+    padX: Math.min(4, Math.max(1, Math.round(Number(options["window-padding-x"]) / 6))),
+    padY: rows >= 11 ? (Number(options["window-padding-y"]) >= 18 ? 2 : 1) : 0,
+    cursor: { block: "█", bar: "▏", underline: "▁", block_hollow: "▯" }[options["cursor-style"]] || "█",
+    titlebar: rows >= 9 && options["macos-titlebar-style"] !== "hidden",
+    tabs: options["macos-titlebar-style"] === "tabs",
+  };
 }
 
 /**
- * A miniature terminal window painted with the theme's own colours: the pane is
- * the theme background, the text is its foreground, the block is its cursor. The
- * palette is judged in context instead of as a row of swatches.
+ * A miniature terminal window painted with the theme's own colours and shaped by
+ * the selected profile: the spacing is its padding, the block is its cursor style,
+ * and the title bar appears — as a tab strip, as bare window buttons, or not at
+ * all — exactly as the profile asks. Changing either selection changes this
+ * window, so neither is judged from a description alone.
  *
- * `rows` includes both borders and must be 5, 7, or 9. Lines are tagged with the
- * smallest window that shows them, so every size stays a coherent snippet.
+ * Opacity and blur are deliberately not faked: a terminal cannot be translucent
+ * inside another terminal, and every theme background is already nearly the
+ * colour of the deck behind it. Those two stay stated as numbers.
+ *
+ * `rows` includes both borders. Content lines are tagged with a priority and the
+ * lowest ones are dropped first, so the window is always exactly the height it
+ * was asked for.
  */
-function previewPanel({ theme, palette, profileName, width, rows }) {
+function previewPanel({ theme, palette, profile, profileName, width, rows }) {
+  const chrome = profileChrome(profile, rows);
   const background = palette.bg(theme.background);
   const border = palette.fg(theme.palette[8]);
   const text = palette.fg(theme.foreground);
@@ -142,24 +201,54 @@ function previewPanel({ theme, palette, profileName, width, rows }) {
   const accent = palette.fg(theme.palette[6]);
   const ok = palette.fg(theme.palette[2]);
   const inner = Math.max(4, width - 4);
-  const line = (...parts) => `${background}${border}│ ${pad(parts.join(""), inner)}${border} │${palette.reset}`;
+  const indent = " ".repeat(Math.min(chrome.padX, Math.max(0, inner - 8)));
+  const raw = (...parts) => `${background}${border}│ ${pad(parts.join(""), inner)}${border} │${palette.reset}`;
+  const line = (...parts) => raw(indent, ...parts);
   const setting = (name, shown) => line(`${key}${name} ${border}= ${shown}`);
+  const swatchRow = (colors) => line(colors.map((color) => palette.swatch(color, 3)).join(""), background);
 
-  const title = ` ${theme.slug} `;
   const script = [
     [1, line(`${palette.fg(theme.cursor)}❯ ${text}termdeck apply ${value}${theme.slug}`)],
-    [3, line("")],
+    [4, raw("")],
     [1, setting("theme", `${value}${theme.slug}`)],
-    [2, setting("background", `${accent}${theme.background}`)],
-    [3, setting("foreground", `${accent}${theme.foreground}`)],
     [2, setting("profile", `${value}${profileName}`)],
-    [1, line(`${ok}✓ palette applied  ${palette.fg(theme.cursor)}❯ ${palette.bg(theme.cursor)} ${background}`)],
+    [3, setting("background", `${accent}${theme.background}`)],
+    [5, setting("foreground", `${accent}${theme.foreground}`)],
+    [6, setting("cursor", `${accent}${theme.cursor}`)],
+    [7, setting("selection", `${accent}${theme.selectionBackground}`)],
+    [9, raw("")],
+    [8, swatchRow(theme.palette.slice(0, 8))],
+    [8, swatchRow(theme.palette.slice(8))],
+    [9, raw("")],
+    [1, line(`${ok}✓ palette applied  ${palette.fg(theme.cursor)}❯ ${chrome.cursor}`)],
   ];
-  const threshold = (rows - 3) / 2;
 
+  // A tab bar is a surface of its own, so it sits a shade above the pane; a
+  // transparent title bar keeps the pane's own colour behind its buttons.
+  const barBackground = chrome.tabs ? palette.bg(blend(theme.background, theme.foreground, 0.1)) : background;
+  const titleBar = chrome.titlebar
+    ? [`${barBackground}${border}│ ${pad(`${palette.fg(theme.palette[1])}●${palette.fg(theme.palette[3])} ●${palette.fg(theme.palette[2])} ●${chrome.tabs ? `${border}   ▏${palette.fg(theme.foreground)} ${theme.slug} ${border}▏` : ""}`, inner)}${border} │${palette.reset}`]
+    : [];
+  const spacing = new Array(chrome.padY).fill(raw(""));
+  const available = Math.max(0, rows - 2 - titleBar.length - spacing.length * 2);
+
+  // Keep the highest-priority lines, then restore their written order, so the
+  // snippet reads top to bottom whatever height it ended up with.
+  const body = script
+    .map(([priority, row], index) => ({ priority, row, index }))
+    .sort((left, right) => left.priority - right.priority || left.index - right.index)
+    .slice(0, available)
+    .sort((left, right) => left.index - right.index)
+    .map((entry) => entry.row);
+  while (body.length < available) body.push(raw(""));
+
+  const title = ` ${theme.slug} `;
   return [
     `${background}${border}╭─${palette.fg(theme.palette[14])}${title}${border}${"─".repeat(Math.max(0, width - 3 - displayWidth(title)))}╮${palette.reset}`,
-    ...script.filter(([priority]) => priority <= threshold).map(([, row]) => row),
+    ...titleBar,
+    ...spacing,
+    ...body,
+    ...spacing,
     `${background}${border}╰${"─".repeat(Math.max(0, width - 2))}╯${palette.reset}`,
   ];
 }
@@ -184,40 +273,44 @@ function swatchRows(theme, palette, compact) {
  * Shows the live window when the terminal can render it and the pane has room,
  * and falls back to plain swatches otherwise.
  */
-function showcase({ theme, palette, profileName, width, budget, compact }) {
+function showcase({ theme, palette, profile, profileName, width, budget, compact }) {
   if (palette.depth >= 8 && width >= 30 && budget >= 5) {
-    const rows = budget >= 9 ? 9 : budget >= 7 ? 7 : 5;
-    return previewPanel({ theme, palette, profileName, width: Math.min(width, 60), rows });
+    return previewPanel({ theme, palette, profile, profileName, width: Math.min(width, 72), rows: Math.min(17, budget) });
   }
   if (budget >= 3) return swatchRows(theme, palette, compact);
   return [];
 }
 
-function detailPanel({ theme, profile, profileName, palette, width, height, compact }) {
-  const { bold, cyan, dim, gold, muted, reset, white } = palette;
-  const special = theme.category === "special";
+/**
+ * The selection, described. The theme owns the top of this pane, the profile
+ * selector sits in the middle, and the window beneath them belongs to both: it is
+ * painted in the theme's colours and shaped by the profile's chrome, so either
+ * selection can be judged by looking rather than by reading a description.
+ *
+ * When the pane has rows to spare it also names the file Enter would rewrite, so
+ * the deck never changes a configuration the reader has not seen the path of.
+ */
+function detailPanel({ theme, palette, profile, profileName, profileIndex, width, height, compact, destination }) {
+  const { bold, dim, gold, muted, reset } = palette;
   const header = [
-    `${bold}${palette.fg(theme.cursor)}${crop(theme.name.toUpperCase(), width)}${reset}`,
+    `${bold}${palette.fg(theme.cursor)}${crop(theme.name.toUpperCase(), width - 9)}${reset}  ${dim}v${theme.version}${reset}`,
     `${muted}${crop(theme.description, width)}${reset}`,
-    `${special ? gold : cyan}${special ? "◆ SPECIAL EDITION" : "CORE THEME"}${reset}  ${dim}theme v${theme.version}${reset}`,
-    ...(palette.colored ? [paletteStrip(theme, palette, width)] : []),
   ];
-  const profileBlock = [
-    `${bold}${white}TERMINAL PROFILE${reset}  ${cyan}${profileName.toUpperCase()}${reset}  ${muted}← → change${reset}`,
-    `${white}${crop(profile.label, width)}${reset}`,
-    `${dim}${crop(profileEffects(profile), width)}${reset}`,
-  ];
-  const wallpaper = theme.wallpaper
-    ? ["", `${gold}◆ Wallpaper included${reset}  ${dim}Ghostty · WezTerm · Kitty · iTerm2 · Terminal · Warp${reset}`]
-    : [];
+  if (theme.category === "special") {
+    // The description already names the property; the badge carries the credit
+    // that appears nowhere else in the deck.
+    const holder = theme.provenance?.rightsHolder;
+    header.push(`${gold}◆ SPECIAL EDITION${reset}${holder ? `  ${dim}${crop(`© ${holder}`, Math.max(8, width - 20))}${reset}` : ""}`);
+  }
+  if (palette.colored) header.push(paletteStrip(theme, palette, width));
 
-  // The selection and its profile always win; the showcase and the wallpaper
-  // note give up their rows first when the terminal is short.
-  const budget = height - header.length - 1 - profileBlock.length;
-  const note = budget - wallpaper.length >= 5 ? wallpaper : [];
-  const body = showcase({ theme, palette, profileName, width, budget: budget - note.length, compact });
-
-  return [...header, ...body, "", ...profileBlock, ...note];
+  const selector = [profileBar(palette, profileIndex, width), profileDetail(palette, profile, width)];
+  const budget = height - header.length - selector.length - 2;
+  const rows = [...header, "", ...selector, "", ...showcase({ theme, palette, profile, profileName, width, budget, compact })];
+  if (destination && height - rows.length >= 2) {
+    rows.push("", `${dim}ENTER writes ${crop(destination, Math.max(12, width - 13))}${reset}`);
+  }
+  return rows;
 }
 
 function helpPanel(palette, width) {
@@ -297,15 +390,20 @@ function updatePanel(palette, width, updates) {
   return rows;
 }
 
-function statusLine({ theme, active, message, profileName, filter, filtering, matches, palette }) {
+/**
+ * One transient line. It reports the last action when there is one, and otherwise
+ * answers the only question the rest of the deck cannot: what is actually applied
+ * to Ghostty right now.
+ */
+function statusLine({ theme, active, message, palette }) {
   const { cyan, dim, gold, mint, reset } = palette;
   if (message) {
     const tone = message.startsWith("✓") ? mint : message.startsWith("…") ? cyan : gold;
     return `${tone}${message}${reset}`;
   }
-  if (!theme) return `${gold}No theme matches "${filter}" — press Esc to clear the filter${reset}`;
-  const scope = filtering ? ` · ${matches} match${matches === 1 ? "" : "es"}` : "";
-  return `${dim}Selected: ${theme.slug} · ${profileName}${scope}${active ? `  |  Active: ${active.theme} · ${active.profile}` : ""}${reset}`;
+  if (!theme) return `${gold}Nothing matches that filter — press Esc to clear it${reset}`;
+  if (!active) return `${gold}Nothing applied yet — press ENTER to apply ${theme.name}${reset}`;
+  return `${dim}Applied: ${mint}${active.theme}${reset}${dim} · ${active.profile}${active.themeVersion ? ` · v${active.themeVersion}` : ""}${reset}`;
 }
 
 /**
@@ -313,32 +411,36 @@ function statusLine({ theme, active, message, profileName, filter, filtering, ma
  * pure functions of the state, and the frame decides where they go, so a small
  * terminal drops content instead of drawing over the controls.
  */
-export function buildFrame({ themes, themeIndex, profileIndex, active, message, help = false, updates = null, showingUpdate = false, filter = "", filtering = false, columns = 100, rows = 30, depth = 24 }) {
+export function buildFrame({ themes, themeIndex, profileIndex, active, message, help = false, updates = null, showingUpdate = false, filter = "", filtering = false, destination = null, columns = 100, rows = 30, depth = 24 }) {
   const palette = createPalette(depth);
-  const { bold, dim, gold, invert, mint, muted, reset, white } = palette;
+  const { dim, muted, reset } = palette;
   const width = Math.max(64, columns);
   const height = Math.max(20, rows);
   const compact = width < 88 || height < 26;
+  // Horizontal decisions follow the width alone: a short but wide terminal has no
+  // reason to squeeze the catalog.
+  const narrow = width < 88;
   const theme = themes[themeIndex];
   const profileName = Object.keys(profiles)[profileIndex];
   const profile = profiles[profileName];
 
   const margin = 3;
   const gutter = 2;
-  const leftWidth = compact ? 24 : 31;
+  const leftWidth = narrow ? 24 : 31;
   const rightColumn = leftWidth + 5;
   const leftPanelWidth = rightColumn - margin - gutter;
   const rightPanelWidth = Math.max(30, width - rightColumn - 2);
 
+  // Header and controls own a fixed number of rows; everything left over is the
+  // body. The profile selector lives inside the pane it changes, so the foot of
+  // the deck carries only the keys and the last outcome.
   const logoLines = logo(palette, compact);
-  const linksRow = 2 + logoLines.length;
-  const ruleRow = linksRow + 1;
-  const titlesRow = ruleRow + 1;
-  const bodyTop = titlesRow + 1;
-  const profileRow = height - 5;
-  const keysRow = height - 3;
-  const statusRow = height - 2;
-  const bodyHeight = Math.max(1, profileRow - bodyTop);
+  const creditsRow = 2 + logoLines.length;
+  const ruleRow = creditsRow + 1;
+  const bodyTop = ruleRow + 1;
+  const keysRow = height - 2;
+  const statusRow = height - 1;
+  const bodyHeight = Math.max(1, keysRow - 1 - bodyTop);
 
   const frame = new Array(height).fill("");
   const set = (row, segments) => {
@@ -346,16 +448,12 @@ export function buildFrame({ themes, themeIndex, profileIndex, active, message, 
   };
 
   logoLines.forEach((line, index) => set(2 + index, [{ column: margin, value: line }]));
-  set(linksRow, [{ column: margin, value: `${dim}${crop(`${REPOSITORY}  •  ${AUTHOR}  •  release v${packageMetadata.version}`, width - 6)}${reset}` }]);
+  set(creditsRow, [{ column: margin, value: `${dim}${crop(`${REPOSITORY}  ·  by ${AUTHOR}`, width - 6)}${reset}` }]);
   set(ruleRow, [{ column: margin, value: `${muted}${"─".repeat(Math.max(20, width - 6))}${reset}` }]);
-  set(titlesRow, [
-    { column: margin, value: `${bold}${white}THEMES${reset}${filtering ? `  ${palette.cyan}/${white}${filter}${invert} ${reset}` : ""}` },
-    { column: rightColumn, value: `${bold}${white}LIVE PREVIEW${reset}` },
-  ]);
 
-  const catalogRows = catalogPanel({ themes, themeIndex, active, palette, width: leftPanelWidth, height: bodyHeight, compact });
+  const catalogRows = catalogPanel({ themes, themeIndex, active, palette, width: leftPanelWidth, height: bodyHeight, narrow, filter, filtering });
   const detailRows = theme
-    ? detailPanel({ theme, profile, profileName, palette, width: rightPanelWidth, height: bodyHeight, compact })
+    ? detailPanel({ theme, profile, profileName, profileIndex, palette, width: rightPanelWidth, height: bodyHeight, compact, destination })
     : [`${muted}Nothing to preview.${reset}`, "", `${dim}Refine the filter or press Esc to clear it.${reset}`];
   for (let index = 0; index < bodyHeight; index += 1) {
     const segments = [];
@@ -364,9 +462,8 @@ export function buildFrame({ themes, themeIndex, profileIndex, active, message, 
     if (segments.length > 0) set(bodyTop + index, segments);
   }
 
-  set(profileRow, [{ column: margin, value: profileBar(palette, profileIndex, width - 6) }]);
   set(keysRow, [{ column: margin, value: keyHints(palette, filtering ? filterBindings : bindings, compact, Boolean(updates?.available)) }]);
-  set(statusRow, [{ column: margin, value: crop(statusLine({ theme, active, message, profileName, filter, filtering, matches: themes.length, palette }), width - 6) }]);
+  set(statusRow, [{ column: margin, value: crop(statusLine({ theme, active, message, palette }), width - 6) }]);
 
   const modal = help ? helpPanel(palette, width) : showingUpdate && updates?.available ? updatePanel(palette, width, updates) : null;
   if (modal) {
@@ -403,6 +500,11 @@ export function updateSummary(updates) {
   return parts.length > 0 ? `! Update available: ${parts.join(" · ")} — press U to review` : "";
 }
 
+/** Home-relative paths keep the destination readable inside a narrow pane. */
+export function shortenPath(value, home = process.env.HOME) {
+  return home && value.startsWith(`${home}/`) ? `~${value.slice(home.length)}` : value;
+}
+
 /** Exit codes a shell expects after each terminating signal. */
 const SIGNAL_EXITS = { SIGHUP: 129, SIGINT: 130, SIGTERM: 143 };
 
@@ -432,6 +534,7 @@ export function openDashboard({ input = process.stdin, output = process.stdout, 
 
   if (!input.isTTY || !output.isTTY) throw new Error("The control center needs an interactive terminal. Use \"termdeck help\" for command mode.");
   const depth = detectDepth({ stream: output });
+  const destination = shortenPath(resolvePaths().config);
 
   return new Promise((resolve, reject) => {
     const screen = createScreen({ output, redraw: () => draw() });
@@ -487,6 +590,7 @@ export function openDashboard({ input = process.stdin, output = process.stdout, 
           showingUpdate,
           filter,
           filtering,
+          destination,
           columns: output.columns,
           rows: output.rows,
           depth,

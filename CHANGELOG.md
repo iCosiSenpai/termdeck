@@ -6,6 +6,16 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 
 ### Termdeck
 
+- Rebuilt the Control Center around stating each thing once: removed the duplicated Terminal Profile heading, the second release version, the wallpaper note that was true of every theme, the two self-evident column titles, and the selection echo in the status row.
+- Moved the profile selector into the pane it changes and made the Live Preview answer to it: the title bar appears as a tab strip, as bare window buttons, or not at all, the content indents by the profile's padding, and the cursor is drawn as the block, bar, or hollow block the profile asks for.
+- Left opacity and blur stated as numbers instead of faked, because a terminal cannot be translucent inside another terminal and every theme background already sits within a few percent of the deck behind it.
+- Gave the catalog the three colours that actually differ between themes — the accent, its green, and its magenta — in place of the bright grey and red slots that looked alike in all eight, tinted each row by the theme it names, and painted the selection as a chip in that theme's own background.
+- Grew the Live Preview into the space the terminal actually has, up to a full listing with the sixteen ANSI slots painted on the theme's own background, and guaranteed the window closes its border at every size.
+- Made the status row answer what is applied to Ghostty, and invite the first apply when nothing is.
+- Named the configuration file Enter would rewrite inside the deck, so no managed file is changed before its path has been shown.
+- Led the footer with the action, moved the power keys to the `?` guide on narrow terminals, and put the catalog filter query and its match count directly above the results they produced.
+- Kept every theme name readable at every terminal size by sizing the catalog on width alone, instead of squeezing it whenever the terminal was merely short.
+- Credited each Special Edition's rights holder in the theme pane instead of repeating the property its description already names.
 - Added a background update check on launch: the Control Center alerts when a newer Termdeck release is published or the applied theme has fallen behind the catalog, and installs or re-applies nothing until the alert is confirmed.
 - Added `termdeck update` with a confirmation prompt, an unattended `--yes`, an opt-out through `TERMDECK_NO_UPDATE_CHECK`, and an upgrade command chosen from how the copy was installed instead of assumed.
 - Upgraded Ghostty, WezTerm, and Kitty exports to complete visual configurations with wallpaper assets and selected working-profile effects.
