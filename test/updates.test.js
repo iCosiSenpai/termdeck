@@ -216,16 +216,27 @@ test("the release feed is only trusted when it answers with a usable version", a
 });
 
 test("a slow feed is abandoned and a cancelled check stops immediately", async () => {
+  /**
+   * A real request holds the event loop open while it is in flight. The timeout
+   * timer is deliberately unref'd so it can never be the reason a CLI lingers,
+   * which means a fake request has to hold the loop itself or the loop drains
+   * before the timeout it is supposed to lose to.
+   */
+  const requestInFlight = (url, options) => new Promise((resolve, reject) => {
+    const arrival = setTimeout(() => resolve({ ok: true, status: 200, json: async () => ({ tag_name: "v9.9.9" }) }), 1000);
+    options.signal.addEventListener("abort", () => {
+      clearTimeout(arrival);
+      reject(options.signal.reason);
+    }, { once: true });
+  });
+
   await assert.rejects(
-    fetchLatestRelease({ timeout: 5, fetchImpl: (url, options) => new Promise((resolve, reject) => { options.signal.addEventListener("abort", () => reject(options.signal.reason)); }) }),
+    fetchLatestRelease({ timeout: 5, fetchImpl: requestInFlight }),
     /did not answer within 5ms/,
   );
 
   const controller = new AbortController();
-  const pending = fetchLatestRelease({
-    signal: controller.signal,
-    fetchImpl: (url, options) => new Promise((resolve, reject) => { options.signal.addEventListener("abort", () => reject(options.signal.reason)); }),
-  });
+  const pending = fetchLatestRelease({ signal: controller.signal, fetchImpl: requestInFlight });
   controller.abort();
   await assert.rejects(pending, /cancelled/);
 });
