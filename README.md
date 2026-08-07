@@ -49,7 +49,7 @@ Running `termdeck` opens the full-screen deck. No theme names to memorize and no
 | <kbd>↑</kbd> <kbd>↓</kbd> | Browse Core Themes and Special Editions |
 | <kbd>←</kbd> <kbd>→</kbd> | Switch between Cozy, Focus, Glass, and Presentation |
 | <kbd>Enter</kbd> | Apply the selected theme and profile to Ghostty |
-| <kbd>X</kbd> | Export the palette for every supported terminal |
+| <kbd>X</kbd> | Export the full native package for every supported terminal |
 | <kbd>R</kbd> | Pick a random look |
 | <kbd>?</kbd> | Open the built-in keyboard guide |
 
@@ -130,15 +130,36 @@ Special Editions live in their own section at the bottom of the Control Center. 
 
 ## One deck, many terminals
 
-| Terminal | Colors | Wallpaper | Profiles | Export |
-| --- | :---: | :---: | :---: | :---: |
-| **Ghostty** | ✓ | ✓ | ✓ | Native |
-| **iTerm2** | ✓ | — | — | `.itermcolors` |
-| **Kitty** | ✓ | — | — | `.conf` |
-| **Alacritty** | ✓ | — | — | `.toml` |
-| **WezTerm** | ✓ | — | — | `.lua` |
+Termdeck exports the richest configuration each terminal can represent natively. The selected Cozy, Focus, Glass, or Presentation profile travels with the palette instead of being flattened into colors.
 
-Ghostty receives the complete experience: background art, opacity, Metal blur, padding, cursor style, titlebar behavior, and split dimming. Other terminals receive faithful color exports without pretending that terminal-specific effects are portable.
+| Terminal | Level | Art | Opacity / blur | Cursor | Chrome / layout | Panes | Package |
+| --- | --- | :---: | :---: | :---: | :---: | :---: | --- |
+| **Ghostty** | Full Experience | ✓ | ✓ | ✓ | ✓ | ✓ | `.conf` |
+| **WezTerm** | Full Experience | ✓ | ✓ | ✓ | ✓ | ✓ | `.lua` |
+| **Kitty** | Full Experience | ✓ | ✓ | ✓ | ✓ | ✓ | `.conf` |
+| **iTerm2** | Visual Profile | ✓ | ✓ | ✓ | — | Global¹ | Dynamic Profile `.json` |
+| **Apple Terminal** | Visual Profile | ✓ | ✓ | ✓ | — | — | `.terminal` |
+| **Warp** | Visual Profile | ✓ | Global² | ✓ | Global² | Global² | `.yaml` + `.jpg` |
+| **Alacritty** | Native Styling | —³ | ✓ | ✓ | ✓ | —³ | `.toml` |
+
+1. iTerm2 split dimming and margins are application-wide preferences. Termdeck deliberately leaves those user-owned while its [Dynamic Profile](https://iterm2.com/documentation-dynamic-profiles.html) carries the wallpaper, blend, transparency, blur, cursor, and colors.
+2. Warp theme YAML natively carries colors, cursor, and [JPEG background art](https://docs.warp.dev/terminal/appearance/custom-themes). Window opacity, blur, and pane dimming remain global Warp settings rather than theme fields.
+3. The complete [Alacritty configuration reference](https://alacritty.org/config-alacritty.html) provides opacity, macOS blur, padding, decorations, and cursor settings but no background-image or native pane system. Termdeck does not fake either feature.
+
+WezTerm receives a complete Lua configuration with background layers and inactive-pane treatment ([background layers](https://wezterm.org/config/lua/config/background.html)); Kitty receives image layout, tint, opacity, macOS blur, padding, decorations, cursor, and inactive-window styling ([Kitty configuration](https://sw.kovidgoyal.net/kitty/conf/)). Apple Terminal profiles support background images, transparency, blur, inactive-window effects, and cursor configuration ([Apple Terminal profile documentation](https://support.apple.com/guide/terminal/change-profiles-text-settings-trmltxt/mac)).
+
+### Export packages
+
+The Control Center exports all seven packages with <kbd>X</kbd>. A single target can be scripted with the same working profile:
+
+```sh
+termdeck export tokyo-midnight --target wezterm --profile glass
+termdeck export nordic-aurora --target kitty --profile cozy
+termdeck export resonant-rover --target warp --profile presentation
+termdeck capabilities
+```
+
+Every export places its wallpaper beside the generated configuration (or in an adjacent `assets/` directory) and writes an immediately resolvable path. Warp artwork is converted to JPEG because that is the format its documented theme schema accepts. `termdeck capabilities` prints the contract directly from the same capability registry used by the exporters.
 
 ## Safe by design
 
@@ -173,7 +194,8 @@ termdeck preview tokyo-midnight
 termdeck apply nordic-aurora --profile focus
 termdeck cycle --profile glass
 termdeck random
-termdeck export cyber-circuit --target iterm2
+termdeck export cyber-circuit --target iterm2 --profile glass
+termdeck capabilities
 termdeck status
 termdeck doctor
 termdeck uninstall

@@ -2,6 +2,17 @@
 
 Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Application releases and theme releases are tracked independently.
 
+## [Unreleased]
+
+### Termdeck
+
+- Upgraded Ghostty, WezTerm, and Kitty exports to complete visual configurations with wallpaper assets and selected working-profile effects.
+- Replaced the iTerm2 color-only file with a live Dynamic Profile carrying artwork, transparency, blur, cursor, and ANSI colors.
+- Added native Apple Terminal and Warp theme packages, including terminal-specific wallpaper handling.
+- Expanded Alacritty output with its supported opacity, macOS blur, padding, decorations, and cursor options while explicitly excluding unsupported background images and panes.
+- Added a source-of-truth capability registry and `termdeck capabilities` command.
+- Established granitic commit rules for durable, atomic checkpoints and release isolation.
+
 ## [0.3.0] - 2026-08-07
 
 ### Termdeck
