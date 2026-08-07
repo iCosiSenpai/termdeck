@@ -30,7 +30,6 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 - Made the Control Center announce what it is doing before applying or exporting blocks the terminal, and report every export target instead of claiming success when some packages failed.
 - Made the Control Center's random key always land on a different theme, sharing one selection rule with `termdeck random` and no longer failing on a single-theme catalog.
 - Made command output follow the environment: styling is dropped when stdout is redirected or `NO_COLOR` is set, `FORCE_COLOR` restores it, and colour blocks degrade to shades instead of escape sequences.
-- Added a project-scoped, read-only Kiro reviewer pinned to Claude Opus 5 at max effort, with a checked, session-aware workflow for independently auditing staged changes and completed checkpoints.
 
 ### Theme releases
 
