@@ -231,6 +231,7 @@ npm run check
 - **Homebrew tap:** [github.com/iCosiSenpai/homebrew-tap](https://github.com/iCosiSenpai/homebrew-tap)
 - **Author:** [github.com/iCosiSenpai](https://github.com/iCosiSenpai)
 - **Issues and ideas:** [Termdeck issue tracker](https://github.com/iCosiSenpai/termdeck/issues)
+- **Codex + Kiro:** [read-only checkpoint review workflow](docs/KIRO_COLLABORATION.md)
 
 Source code, Core Theme data, and original Core artwork are MIT licensed. Special Editions are unofficial fan works; third-party names, characters, marks, and source properties remain with their respective rights holders. Termdeck is not affiliated with or endorsed by those rights holders. Per-theme terms and attribution are generated from the catalog in the [wallpaper notice](assets/wallpapers/NOTICE.md).
 

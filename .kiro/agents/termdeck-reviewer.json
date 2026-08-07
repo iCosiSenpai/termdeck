@@ -1,0 +1,49 @@
+{
+  "name": "termdeck-reviewer",
+  "description": "Read-only checkpoint reviewer for Termdeck changes",
+  "prompt": "file://./termdeck-reviewer-prompt.md",
+  "mcpServers": {},
+  "tools": [
+    "read"
+  ],
+  "toolAliases": {},
+  "allowedTools": [
+    "read"
+  ],
+  "resources": [
+    "file://AGENTS.md",
+    "file://package.json",
+    "file://CHANGELOG.md"
+  ],
+  "includeMcpJson": false,
+  "model": null,
+  "permissions": {
+    "rules": [
+      {
+        "capability": "fs_read",
+        "match": ["**"],
+        "effect": "allow"
+      },
+      {
+        "capability": "fs_write",
+        "match": ["**"],
+        "effect": "deny"
+      },
+      {
+        "capability": "shell",
+        "match": ["**"],
+        "effect": "deny"
+      },
+      {
+        "capability": "mcp",
+        "match": ["**"],
+        "effect": "deny"
+      },
+      {
+        "capability": "subagent",
+        "match": ["**"],
+        "effect": "deny"
+      }
+    ]
+  }
+}
