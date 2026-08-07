@@ -18,7 +18,7 @@ kiro-cli --agent termdeck-reviewer
 
 ## Review a checkpoint
 
-Kiro headless mode requires a local `KIRO_API_KEY`. Create the key in Kiro account settings and export it from your shell; never commit it or place it in a project file.
+Authenticate locally once with `kiro-cli login`. Kiro CLI can then reuse that session for interactive and non-interactive reviews. Credentials remain owned by Kiro and must never be committed or placed in a project file.
 
 Stage one coherent change, then review it before committing:
 
@@ -39,7 +39,7 @@ Pass an explicit base to review a wider checkpoint range:
 npm run review:kiro -- origin/main
 ```
 
-The wrapper always runs `npm run check` first. Kiro receives the resulting diff on standard input and may inspect repository files, but its agent policy prevents modifications and command execution.
+The wrapper always runs `npm run check` first. It writes the resulting diff to a uniquely named temporary file under the ignored `.build/` directory, gives that exact path to Kiro, and removes the review artifacts and empty review directory when the review ends. The reviewer must identify the patch it read; the wrapper rejects missing acknowledgements and reported input errors, while the visible Kiro tool log shows which file was actually opened. Kiro may inspect repository files, but its agent policy prevents modifications and command execution.
 
 ## Parallel work
 
