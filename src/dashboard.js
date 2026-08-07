@@ -22,10 +22,27 @@ const bindings = [
   { guide: "1–4", detail: "select a profile directly" },
   { hint: "ENTER", label: "apply", guide: "Enter", detail: "apply the selection to Ghostty", accent: true },
   { hint: "X", label: "export", guide: "X", detail: "export the theme for every terminal" },
+  { hint: "/", label: "filter", guide: "/", detail: "filter the catalog by typing", wideOnly: true },
   { hint: "R", label: "random", guide: "R", detail: "pick a random theme", wideOnly: true },
   { hint: "?", label: "help", guide: "?", detail: "open or close this guide" },
   { hint: "Q", label: "quit", guide: "Q / Esc", detail: "close the control center" },
 ];
+
+/** While filtering, letters belong to the query, so the deck advertises less. */
+const filterBindings = [
+  { hint: "TYPE", label: "to filter" },
+  { hint: "↑↓", label: "theme" },
+  { hint: "←→", label: "profile" },
+  { hint: "ENTER", label: "apply", accent: true },
+  { hint: "ESC", label: "clear" },
+];
+
+/** Matches a query against everything a person might remember about a theme. */
+export function filterThemes(themes, query) {
+  const needle = String(query || "").trim().toLowerCase();
+  if (!needle) return themes;
+  return themes.filter((theme) => `${theme.name} ${theme.slug} ${theme.description} ${theme.category}`.toLowerCase().includes(needle));
+}
 
 function logo(palette, compact = false) {
   const { bold, dim, reset, cyan, mint, violet, white } = palette;
@@ -56,9 +73,9 @@ function profileEffects(profile) {
   return `${opacity}% opacity · ${blur} · ${options["window-padding-x"]}×${options["window-padding-y"]} padding · ${options["cursor-style"]} cursor`;
 }
 
-function keyHints(palette, compact) {
+function keyHints(palette, list, compact) {
   const { bold, mint, muted, reset, white } = palette;
-  const hints = bindings
+  const hints = list
     .filter((binding) => binding.hint && !(compact && binding.wideOnly))
     .map((binding) => {
       const hint = compact ? binding.compactHint || binding.hint : binding.hint;
@@ -73,6 +90,7 @@ function keyHints(palette, compact) {
  */
 function catalogPanel({ themes, themeIndex, active, palette, width, height, compact }) {
   const { bold, cyan, dim, gold, mint, muted, reset, white } = palette;
+  if (themes.length === 0) return [`${gold}No theme matches${reset}`];
   const entries = [];
   for (const category of ["core", "special"]) {
     const members = themes.filter((item) => item.category === category);
@@ -218,14 +236,22 @@ function helpPanel(palette, width) {
   ];
 }
 
+function statusLine({ theme, active, message, profileName, filter, filtering, matches, palette }) {
+  const { dim, gold, mint, reset } = palette;
+  if (message) return `${message.startsWith("✓") ? mint : gold}${message}${reset}`;
+  if (!theme) return `${gold}No theme matches "${filter}" — press Esc to clear the filter${reset}`;
+  const scope = filtering ? ` · ${matches} match${matches === 1 ? "" : "es"}` : "";
+  return `${dim}Selected: ${theme.slug} · ${profileName}${scope}${active ? `  |  Active: ${active.theme} · ${active.profile}` : ""}${reset}`;
+}
+
 /**
  * Builds the whole screen as an array of rows, one per terminal line. Panels are
  * pure functions of the state, and the frame decides where they go, so a small
  * terminal drops content instead of drawing over the controls.
  */
-export function buildFrame({ themes, themeIndex, profileIndex, active, message, help = false, columns = 100, rows = 30, depth = 24 }) {
+export function buildFrame({ themes, themeIndex, profileIndex, active, message, help = false, filter = "", filtering = false, columns = 100, rows = 30, depth = 24 }) {
   const palette = createPalette(depth);
-  const { bold, dim, gold, mint, muted, reset, white } = palette;
+  const { bold, dim, gold, invert, mint, muted, reset, white } = palette;
   const width = Math.max(64, columns);
   const height = Math.max(20, rows);
   const compact = width < 88 || height < 26;
@@ -259,12 +285,14 @@ export function buildFrame({ themes, themeIndex, profileIndex, active, message, 
   set(linksRow, [{ column: margin, value: `${dim}${crop(`${REPOSITORY}  •  ${AUTHOR}  •  release v${packageMetadata.version}`, width - 6)}${reset}` }]);
   set(ruleRow, [{ column: margin, value: `${muted}${"─".repeat(Math.max(20, width - 6))}${reset}` }]);
   set(titlesRow, [
-    { column: margin, value: `${bold}${white}THEMES${reset}` },
+    { column: margin, value: `${bold}${white}THEMES${reset}${filtering ? `  ${palette.cyan}/${white}${filter}${invert} ${reset}` : ""}` },
     { column: rightColumn, value: `${bold}${white}LIVE PREVIEW${reset}` },
   ]);
 
   const catalogRows = catalogPanel({ themes, themeIndex, active, palette, width: leftPanelWidth, height: bodyHeight, compact });
-  const detailRows = detailPanel({ theme, profile, profileName, palette, width: rightPanelWidth, height: bodyHeight, compact });
+  const detailRows = theme
+    ? detailPanel({ theme, profile, profileName, palette, width: rightPanelWidth, height: bodyHeight, compact })
+    : [`${muted}Nothing to preview.${reset}`, "", `${dim}Refine the filter or press Esc to clear it.${reset}`];
   for (let index = 0; index < bodyHeight; index += 1) {
     const segments = [];
     if (catalogRows[index]) segments.push({ column: margin, value: catalogRows[index] });
@@ -273,13 +301,8 @@ export function buildFrame({ themes, themeIndex, profileIndex, active, message, 
   }
 
   set(profileRow, [{ column: margin, value: profileBar(palette, profileIndex, width - 6) }]);
-  set(keysRow, [{ column: margin, value: keyHints(palette, compact) }]);
-  set(statusRow, [{
-    column: margin,
-    value: message
-      ? `${message.startsWith("✓") ? mint : gold}${crop(message, width - 6)}${reset}`
-      : `${dim}Selected: ${theme.slug} · ${profileName}${active ? `  |  Active: ${active.theme} · ${active.profile}` : ""}${reset}`,
-  }]);
+  set(keysRow, [{ column: margin, value: keyHints(palette, filtering ? filterBindings : bindings, compact) }]);
+  set(statusRow, [{ column: margin, value: crop(statusLine({ theme, active, message, profileName, filter, filtering, matches: themes.length, palette }), width - 6) }]);
 
   if (help) {
     const box = helpPanel(palette, width);
@@ -314,10 +337,13 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
   const themes = loadThemes();
   const names = Object.keys(profiles);
   let active = readState();
+  let visible = themes;
   let themeIndex = Math.max(0, themes.findIndex((theme) => theme.slug === active?.theme));
   let profileIndex = Math.max(0, names.indexOf(active?.profile));
   let message = "";
   let showingHelp = false;
+  let filter = "";
+  let filtering = false;
 
   if (!input.isTTY || !output.isTTY) throw new Error("The control center needs an interactive terminal. Use \"termdeck help\" for command mode.");
   const depth = detectDepth({ stream: output });
@@ -362,41 +388,88 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
 
     function draw() {
       try {
-        screen.paint(buildFrame({ themes, themeIndex, profileIndex, active, message, help: showingHelp, columns: output.columns, rows: output.rows, depth }).rows);
+        screen.paint(buildFrame({
+          themes: visible,
+          themeIndex,
+          profileIndex,
+          active,
+          message,
+          help: showingHelp,
+          filter,
+          filtering,
+          columns: output.columns,
+          rows: output.rows,
+          depth,
+        }).rows);
       } catch (error) {
         fail(error);
       }
     }
 
+    /** Re-applies the query, keeping the current theme selected when it survives. */
+    function refilter() {
+      const slug = visible[themeIndex]?.slug;
+      visible = filterThemes(themes, filter);
+      const kept = visible.findIndex((theme) => theme.slug === slug);
+      themeIndex = kept >= 0 ? kept : 0;
+    }
+
+    function applySelection() {
+      const theme = visible[themeIndex];
+      if (!theme) return;
+      const profileName = names[profileIndex];
+      try {
+        applyGhostty({ theme, profile: getProfile(profileName), profileName, font: active?.font || null });
+        const reload = reloadGhostty();
+        active = readState();
+        message = reload.reloaded
+          ? `✓ ${theme.name} + ${profileName} applied — Ghostty reloaded`
+          : `✓ Applied — press ⌘⇧, to reload Ghostty (${reload.reason})`;
+      } catch (error) {
+        message = `! ${error.message}`;
+      }
+    }
+
+    function onFilterKey(value, key) {
+      if (key.name === "escape") {
+        filtering = false;
+        filter = "";
+        refilter();
+      } else if (key.name === "return") {
+        applySelection();
+      } else if (key.name === "backspace") {
+        filter = filter.slice(0, -1);
+        refilter();
+      } else if (key.name === "up") themeIndex = visible.length ? (themeIndex - 1 + visible.length) % visible.length : 0;
+      else if (key.name === "down") themeIndex = visible.length ? (themeIndex + 1) % visible.length : 0;
+      else if (key.name === "left") profileIndex = (profileIndex - 1 + names.length) % names.length;
+      else if (key.name === "right") profileIndex = (profileIndex + 1) % names.length;
+      else if (typeof value === "string" && /^[^\u0000-\u001f\u007f]$/u.test(value) && !key.ctrl && !key.meta) {
+        filter += value;
+        refilter();
+      }
+      draw();
+    }
+
     function onKey(value, key = {}) {
       try {
-        if ((key.ctrl && key.name === "c") || key.name === "q" || key.name === "escape") return close();
+        if (key.ctrl && key.name === "c") return close();
+        if (filtering) return onFilterKey(value, key);
+        if (key.name === "q" || key.name === "escape") return close();
         if (key.name === "?" || value === "?") { showingHelp = !showingHelp; draw(); return; }
         if (showingHelp) return;
         message = "";
-        if (key.name === "up" || key.name === "k") themeIndex = (themeIndex - 1 + themes.length) % themes.length;
-        else if (key.name === "down" || key.name === "j") themeIndex = (themeIndex + 1) % themes.length;
+        if (value === "/") filtering = true;
+        else if (key.name === "up" || key.name === "k") themeIndex = (themeIndex - 1 + visible.length) % visible.length;
+        else if (key.name === "down" || key.name === "j") themeIndex = (themeIndex + 1) % visible.length;
         else if (key.name === "left" || key.name === "h") profileIndex = (profileIndex - 1 + names.length) % names.length;
         else if (key.name === "right" || key.name === "l") profileIndex = (profileIndex + 1) % names.length;
         else if (/^[1-4]$/.test(value)) profileIndex = Number(value) - 1;
-        else if (key.name === "r") themeIndex = Math.floor(Math.random() * themes.length);
+        else if (key.name === "r") themeIndex = Math.floor(Math.random() * visible.length);
         else if (key.name === "x") {
-          exportEverywhere(themes[themeIndex], names[profileIndex]);
-          message = `✓ Exported ${themes[themeIndex].name} to dist/ for ${targets.length} terminals`;
-        } else if (key.name === "return") {
-          const theme = themes[themeIndex];
-          const profileName = names[profileIndex];
-          try {
-            applyGhostty({ theme, profile: getProfile(profileName), profileName, font: active?.font || null });
-            const reload = reloadGhostty();
-            active = readState();
-            message = reload.reloaded
-              ? `✓ ${theme.name} + ${profileName} applied — Ghostty reloaded`
-              : `✓ Applied — press ⌘⇧, to reload Ghostty (${reload.reason})`;
-          } catch (error) {
-            message = `! ${error.message}`;
-          }
-        }
+          exportEverywhere(visible[themeIndex], names[profileIndex]);
+          message = `✓ Exported ${visible[themeIndex].name} to dist/ for ${targets.length} terminals`;
+        } else if (key.name === "return") applySelection();
         draw();
       } catch (error) {
         fail(error);

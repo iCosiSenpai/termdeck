@@ -52,6 +52,7 @@ The **Terminal Profile** is the behavior layer applied on top of the selected th
 | <kbd>←</kbd> <kbd>→</kbd> | Switch the Terminal Profile: Cozy, Focus, Glass, or Presentation |
 | <kbd>Enter</kbd> | Apply the selected theme and profile to Ghostty |
 | <kbd>X</kbd> | Export the full native package for every supported terminal |
+| <kbd>/</kbd> | Filter the catalog by typing; <kbd>Esc</kbd> clears the filter |
 | <kbd>R</kbd> | Pick a random look |
 | <kbd>?</kbd> | Open the built-in keyboard guide |
 

@@ -26,6 +26,7 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 - Coalesced terminal resize events into a single redraw so dragging a window no longer floods the terminal with full repaints.
 - Guaranteed the Control Center restores the cursor, the main screen, and terminal echo on SIGHUP, SIGINT, SIGTERM, an abrupt exit, or a failed repaint, and exits with the conventional signal status.
 - Replaced the Live Preview swatch grid with a miniature terminal window rendered in the selected theme's own background, foreground, cursor, and palette, sized to the space available and falling back to swatches where colour is unavailable.
+- Added `/` to filter the catalog by name, slug, description, or category while browsing, with live match counts, an explained empty result, and `Esc` to clear.
 
 ### Theme releases
 

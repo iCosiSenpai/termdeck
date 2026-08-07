@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import test from "node:test";
 import { loadThemes } from "../src/catalog.js";
-import { buildFrame, openDashboard } from "../src/dashboard.js";
+import { buildFrame, filterThemes, openDashboard } from "../src/dashboard.js";
 import { displayWidth, stripAnsi } from "../src/ui/ansi.js";
 
 /** The whole frame as one searchable string. */
@@ -149,6 +149,53 @@ test("the live preview shrinks with the pane and gives way to swatches", () => {
   assert.match(paneRows(70, 22), /BACKGROUND/);
   assert.doesNotMatch(paneRows(120, 32, 1), /╭─ tokyo/, "a terminal without real colour falls back to swatches");
   assert.match(paneRows(120, 32, 1), /BACKGROUND/);
+});
+
+test("the catalog filter matches names, slugs, descriptions, and categories", () => {
+  const themes = loadThemes();
+  assert.equal(filterThemes(themes, ""), themes, "an empty query keeps the whole catalog");
+  assert.deepEqual(filterThemes(themes, "nord").map((theme) => theme.slug), ["nordic-aurora"]);
+  assert.deepEqual(filterThemes(themes, "NORDIC AURORA").map((theme) => theme.slug), ["nordic-aurora"]);
+  assert.deepEqual(filterThemes(themes, "special").map((theme) => theme.category), ["special", "special"]);
+  assert.deepEqual(filterThemes(themes, "no such thing"), []);
+  assert.ok(filterThemes(themes, "aurora green").length >= 1, "descriptions are searchable");
+});
+
+test("an empty filter result explains itself instead of breaking the frame", () => {
+  const frame = buildFrame({ themes: [], themeIndex: 0, profileIndex: 0, filter: "zzz", filtering: true, columns: 100, rows: 30 });
+  const plain = stripAnsi(frame.rows.join("\n"));
+  assert.match(plain, /THEMES {2}\/zzz/);
+  assert.match(plain, /No theme matches/);
+  assert.match(plain, /Nothing to preview/);
+  assert.match(plain, /press Esc to clear the filter/);
+  for (const row of frame.rows) assert.ok(displayWidth(row) <= frame.width);
+});
+
+test("typing narrows the catalog and Escape restores it", async () => {
+  const { input, output } = fakeTerminal();
+  const closed = openDashboard({ input, output });
+  output.flush();
+
+  input.emit("keypress", "/", { name: "slash" });
+  const opened = stripAnsi(output.flush());
+  assert.match(opened, /THEMES {2}\//, "the filter line opens");
+  assert.match(opened, /TYPE to filter/, "the hints switch to the filter keys");
+
+  for (const character of "nord") input.emit("keypress", character, { name: character });
+  const narrowed = stripAnsi(output.flush());
+  assert.match(narrowed, /THEMES {2}\/nord/);
+  assert.match(narrowed, /1 match/);
+
+  input.emit("keypress", "\u007f", { name: "backspace" });
+  assert.match(stripAnsi(output.flush()), /THEMES {2}\/nor/, "backspace edits the query");
+
+  input.emit("keypress", "\u001b", { name: "escape" });
+  const cleared = stripAnsi(output.flush());
+  assert.match(cleared, /R random/, "clearing the filter restores the normal hints");
+  assert.doesNotMatch(cleared, /match/);
+
+  input.emit("keypress", "\u001b", { name: "escape" });
+  await closed;
 });
 
 test("Escape restores the terminal and releases stdin", async () => {
