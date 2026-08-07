@@ -125,7 +125,7 @@ Special Editions live in their own section at the bottom of the Control Center. 
     <td width="50%" valign="top">
       <img src="docs/previews/chrome-moon.png" alt="Chrome Moon terminal preview" />
       <h3>Chrome Moon <code>v1.0.0</code></h3>
-      <p>An unofficial <em>Cyberpunk: Edgerunners</em> fan edition: Rebecca and David together on a lunar ridge beneath Earthlight.</p>
+      <p>An unofficial <em>Cyberpunk: Edgerunners</em> fan edition: Lucy and David together on a lunar ridge beneath Earthlight.</p>
     </td>
   </tr>
 </table>

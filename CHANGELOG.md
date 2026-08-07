@@ -22,7 +22,7 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 
 | Theme | Version | Category | Release notes |
 | --- | --- | --- | --- |
-| Chrome Moon | 1.0.0 | Special | Initial *Cyberpunk: Edgerunners* fan-edition palette and Rebecca-and-David lunar wallpaper |
+| Chrome Moon | 1.0.0 | Special | Initial *Cyberpunk: Edgerunners* fan-edition palette and Lucy-and-David lunar wallpaper |
 
 ## [0.3.0] - 2026-08-07
 

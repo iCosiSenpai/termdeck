@@ -36,6 +36,6 @@ An original unofficial fan-art wallpaper featuring Male Rover from *Wuthering Wa
 
 ### Chrome Moon 1.0.0
 
-An original alternate-universe, unofficial fan-art wallpaper featuring Rebecca and David from *Cyberpunk: Edgerunners* seated together on a lunar ridge beneath Earthlight. Polished cinematic anime key art in near-black navy, cyan, acid yellow, hot magenta, and mint; both characters and Earth remain on the right while the left 58% is dark negative space. The composition does not recreate an existing episode frame.
+An original alternate-universe, unofficial fan-art wallpaper featuring Lucy and David from *Cyberpunk: Edgerunners* seated together on a lunar ridge beneath Earthlight. Lucy follows her official character design: an asymmetrical white bob with pastel pink, lavender, and cyan underlayers, sharp red eye makeup, a black bodysuit, and a translucent white tech jacket. Polished cinematic anime key art in near-black navy, cyan, acid yellow, magenta, and lavender; both characters and Earth remain on the right while the left 58% is dark negative space. The composition does not recreate an existing episode frame or key visual.
 
 Generated on 2026-08-07. Source outputs were copied into `assets/wallpapers/` and the generated terminal previews live in `docs/previews/`.
