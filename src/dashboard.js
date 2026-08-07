@@ -174,6 +174,7 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
       input.off("keypress", onKey);
       output.off("resize", render);
       input.setRawMode(false);
+      input.pause();
       output.write(`${ESC}?25h${ESC}?1049l${reset}`);
       resolve();
     };

@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
 import test from "node:test";
 import { loadThemes } from "../src/catalog.js";
-import { renderDashboard } from "../src/dashboard.js";
+import { openDashboard, renderDashboard } from "../src/dashboard.js";
 
 test("dashboard renders the selected theme, profiles, and controls", () => {
   const output = renderDashboard({
@@ -30,4 +31,28 @@ test("dashboard has a compact layout", () => {
   assert.match(output, /CONTROL CENTER/);
   assert.match(output, /Carbon M/);
   assert.match(output, /TERMINAL PROFILE/);
+});
+
+test("Escape restores the terminal and releases stdin", async () => {
+  const input = new EventEmitter();
+  input.isTTY = true;
+  input.setRawMode = (value) => { input.rawMode = value; };
+  input.resume = () => { input.resumed = true; };
+  input.pause = () => { input.paused = true; };
+
+  const output = new EventEmitter();
+  output.isTTY = true;
+  output.columns = 100;
+  output.rows = 30;
+  output.write = () => true;
+
+  const closed = openDashboard({ input, output });
+  input.emit("keypress", "\u001b", { name: "escape" });
+  await closed;
+
+  assert.equal(input.resumed, true);
+  assert.equal(input.paused, true);
+  assert.equal(input.rawMode, false);
+  assert.equal(input.listenerCount("keypress"), 0);
+  assert.equal(output.listenerCount("resize"), 0);
 });
