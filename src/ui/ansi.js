@@ -211,6 +211,9 @@ function to16(hex) {
 
 const SHADES = [" ", "░", "▒", "▓", "█"];
 
+/** Depths FORCE_COLOR can request, following the widely used convention. */
+const FORCED_DEPTHS = { 0: 1, false: 1, 1: 4, true: 4, 2: 8, 3: 24 };
+
 /** Fixed accents of the Control Center chrome, degraded with the palette. */
 export const tokens = {
   cyan: "#67e8f9",
@@ -225,10 +228,15 @@ export const tokens = {
 
 /**
  * Reports the colour depth of a stream: 24 for truecolor, 8 for 256 colours,
- * 4 for the basic sixteen, and 1 for monochrome. Node's own detection already
- * honours NO_COLOR, FORCE_COLOR, COLORTERM, TERM, and CI environments.
+ * 4 for the basic sixteen, and 1 for monochrome.
+ *
+ * NO_COLOR always wins, FORCE_COLOR is honoured even for redirected output, and
+ * anything else is left to Node's own terminal detection.
  */
 export function detectDepth({ stream = process.stdout, env = process.env } = {}) {
+  if (env.NO_COLOR !== undefined && env.NO_COLOR !== "") return 1;
+  const forced = FORCED_DEPTHS[env.FORCE_COLOR];
+  if (forced) return forced;
   if (typeof stream?.getColorDepth !== "function") return 1;
   return stream.getColorDepth(env);
 }

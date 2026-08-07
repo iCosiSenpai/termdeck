@@ -45,7 +45,12 @@ test("swatches keep their width whether or not colour is available", () => {
   assert.equal(displayWidth(createPalette(24).swatch("#67e8f9", 5)), 5);
 });
 
-test("colour depth is delegated to the stream and falls back to monochrome", () => {
+test("colour depth follows the environment before the stream", () => {
   assert.equal(detectDepth({ stream: {}, env: {} }), 1);
   assert.equal(detectDepth({ stream: { getColorDepth: () => 24 }, env: {} }), 24);
+  assert.equal(detectDepth({ stream: { getColorDepth: () => 24 }, env: { NO_COLOR: "1" } }), 1);
+  assert.equal(detectDepth({ stream: {}, env: { FORCE_COLOR: "3" } }), 24);
+  assert.equal(detectDepth({ stream: {}, env: { FORCE_COLOR: "1" } }), 4);
+  assert.equal(detectDepth({ stream: { getColorDepth: () => 24 }, env: { FORCE_COLOR: "0" } }), 1);
+  assert.equal(detectDepth({ stream: {}, env: { NO_COLOR: "1", FORCE_COLOR: "3" } }), 1, "NO_COLOR wins");
 });

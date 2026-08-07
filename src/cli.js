@@ -8,15 +8,27 @@ import { capabilityLabels, terminalCapabilities } from "./capabilities.js";
 import { applyGhostty, readState, reloadGhostty, resolvePaths, uninstallGhostty } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
 import { openDashboard } from "./dashboard.js";
+import { createPalette, detectDepth } from "./ui/ansi.js";
 
+const palette = createPalette(detectDepth({ stream: process.stdout }));
+
+/**
+ * Command output uses the reader's own ANSI colours instead of fixed hexes, so
+ * it blends with whatever terminal theme is active. Styling disappears entirely
+ * when stdout is redirected or NO_COLOR is set.
+ */
+const style = (code) => (palette.colored ? `\u001b[${code}m` : "");
 const c = {
-  cyan: "\u001b[36m",
-  dim: "\u001b[2m",
-  bold: "\u001b[1m",
-  reset: "\u001b[0m",
-  green: "\u001b[32m",
-  yellow: "\u001b[33m",
+  reset: style(0),
+  bold: style(1),
+  dim: style(2),
+  green: style(32),
+  yellow: style(33),
+  cyan: style(36),
 };
+
+/** Colour blocks must show the theme's exact colours, or a shade when they cannot. */
+const swatch = (hex, width = 3) => palette.swatch(hex, width);
 
 function help() {
   console.log(`${c.bold}Termdeck v${packageMetadata.version}${c.reset} — cinematic themes and terminal profiles
@@ -56,12 +68,6 @@ function parseOptions(args) {
     else options[rawKey] = true;
   }
   return { positional, options };
-}
-
-function swatch(hex, width = 3) {
-  const value = hex.slice(1);
-  const [r, g, b] = [0, 2, 4].map((index) => Number.parseInt(value.slice(index, index + 2), 16));
-  return `\u001b[48;2;${r};${g};${b}m${" ".repeat(width)}${c.reset}`;
 }
 
 function preview(theme) {
