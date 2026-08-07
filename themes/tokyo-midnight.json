@@ -1,0 +1,14 @@
+{
+  "slug": "tokyo-midnight",
+  "name": "Tokyo Midnight",
+  "description": "Rainy midnight violet with neon signs reflected in asphalt.",
+  "background": "#0B0C18",
+  "foreground": "#C7D1F2",
+  "cursor": "#FF7EDB",
+  "selectionBackground": "#302A5C",
+  "selectionForeground": "#F4F5FF",
+  "palette": [
+    "#151628", "#F7768E", "#73DACA", "#E0AF68", "#7AA2F7", "#BB9AF7", "#7DCFFF", "#A9B1D6",
+    "#414868", "#FF8FA3", "#8BF0DD", "#F4C982", "#91B4FF", "#CBAEFF", "#98E1FF", "#DCE5FF"
+  ]
+}

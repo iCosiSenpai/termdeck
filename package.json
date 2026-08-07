@@ -1,0 +1,44 @@
+{
+  "name": "termdeck",
+  "version": "0.1.0",
+  "description": "A cinematic theme deck and profile switcher for Ghostty and modern terminals.",
+  "type": "module",
+  "bin": {
+    "termdeck": "./bin/termdeck.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check src/cli.js && node --test",
+    "start": "node ./bin/termdeck.js"
+  },
+  "keywords": [
+    "ghostty",
+    "terminal",
+    "themes",
+    "iterm2",
+    "kitty",
+    "wezterm",
+    "alacritty"
+  ],
+  "author": "Alessio Cosi",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iCosiSenpai/termdeck.git"
+  },
+  "bugs": {
+    "url": "https://github.com/iCosiSenpai/termdeck/issues"
+  },
+  "homepage": "https://github.com/iCosiSenpai/termdeck#readme",
+  "files": [
+    "bin",
+    "src",
+    "themes",
+    "assets",
+    "LICENSE",
+    "README.md"
+  ]
+}
