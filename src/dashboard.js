@@ -12,6 +12,7 @@ const dim = `${ESC}2m`;
 const cyan = `${ESC}38;2;103;232;249m`;
 const mint = `${ESC}38;2;120;230;200m`;
 const gold = `${ESC}38;2;229;181;103m`;
+const violet = `${ESC}38;2;187;154;247m`;
 const muted = `${ESC}38;2;116;128;151m`;
 const white = `${ESC}38;2;226;232;240m`;
 const panel = `${ESC}48;2;17;21;31m`;
@@ -40,11 +41,11 @@ function move(row, column = 1) {
 }
 
 function logo(compact = false) {
-  if (compact) return [`${bold}${cyan}TERM${white}DECK${reset}  ${dim}// CONTROL CENTER  v${packageMetadata.version}${reset}`];
+  if (compact) return [`${violet}△${mint}△${cyan}[❯▮]${reset}  ${bold}${cyan}TERM${white}DECK${reset}  ${dim}// CONTROL CENTER  v${packageMetadata.version}${reset}`];
   return [
-    `${cyan}${bold}╺┳╸┏━╸┏━┓┏┳┓${white}  ╺┳┓┏━╸┏━╷╻┏${reset}`,
-    `${cyan}${bold} ┃ ┣╸ ┣┳┛┃┃┃${white}   ┃┃┣╸ ┃  ┣┻┓${reset}`,
-    `${cyan}${bold} ╹ ┗━╸╹┗╸╹ ╹${white}  ╺┻┛┗━╸┗━╸╹ ╹${reset}  ${dim}CONTROL CENTER  v${packageMetadata.version}${reset}`,
+    ` ${violet}╭────╮${reset}  ${cyan}${bold}╺┳╸┏━╸┏━┓┏┳┓${white}  ╺┳┓┏━╸┏━╷╻┏${reset}`,
+    `${mint}╭${cyan}┤ ❯▮ │${reset}  ${cyan}${bold} ┃ ┣╸ ┣┳┛┃┃┃${white}   ┃┃┣╸ ┃  ┣┻┓${reset}`,
+    `${mint}╰${cyan}┴────╯${reset}  ${cyan}${bold} ╹ ┗━╸╹┗╸╹ ╹${white}  ╺┻┛┗━╸┗━╸╹ ╹${reset}  ${dim}CONTROL CENTER  v${packageMetadata.version}${reset}`,
   ];
 }
 

@@ -24,6 +24,7 @@ test("dashboard renders the selected theme, profiles, and controls", () => {
   assert.match(output, /CORE COLLECTION/);
   assert.match(output, /SPECIAL EDITIONS/);
   assert.match(output, /github\.com\/iCosiSenpai\/termdeck/);
+  assert.match(output, /┤ ❯▮ │/);
 });
 
 test("dashboard has a compact layout", () => {
@@ -31,6 +32,7 @@ test("dashboard has a compact layout", () => {
   assert.match(output, /CONTROL CENTER/);
   assert.match(output, /Carbon M/);
   assert.match(output, /TERMINAL PROFILE/);
+  assert.match(output, /△.*△.*\[❯▮\]/s);
 });
 
 test("Escape restores the terminal and releases stdin", async () => {

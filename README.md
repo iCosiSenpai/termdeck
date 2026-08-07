@@ -1,6 +1,6 @@
 <div align="center">
 
-# TERMDECK
+# <img src="assets/brand/termdeck-icon-128.png" width="64" height="64" alt="Termdeck icon" align="center"> TERMDECK
 
 ### Your terminal has settings. Termdeck gives it a control center.
 
