@@ -6,6 +6,8 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 
 ### Termdeck
 
+- Added a background update check on launch: the Control Center alerts when a newer Termdeck release is published or the applied theme has fallen behind the catalog, and installs or re-applies nothing until the alert is confirmed.
+- Added `termdeck update` with a confirmation prompt, an unattended `--yes`, an opt-out through `TERMDECK_NO_UPDATE_CHECK`, and an upgrade command chosen from how the copy was installed instead of assumed.
 - Upgraded Ghostty, WezTerm, and Kitty exports to complete visual configurations with wallpaper assets and selected working-profile effects.
 - Replaced the iTerm2 color-only file with a live Dynamic Profile carrying artwork, transparency, blur, cursor, and ANSI colors.
 - Added native Apple Terminal and Warp theme packages, including terminal-specific wallpaper handling.

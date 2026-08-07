@@ -54,6 +54,7 @@ The **Terminal Profile** is the behavior layer applied on top of the selected th
 | <kbd>X</kbd> | Export the full native package for every supported terminal |
 | <kbd>/</kbd> | Filter the catalog by typing; <kbd>Esc</kbd> clears the filter |
 | <kbd>R</kbd> | Pick a random look |
+| <kbd>U</kbd> | Review the pending update, shown only when there is one |
 | <kbd>?</kbd> | Open the built-in keyboard guide |
 
 The dashboard displays the Termdeck release, selected theme version, active setup, project repository, and author profile. Themes are previewed without touching Ghostty until you press <kbd>Enter</kbd>.
@@ -176,8 +177,25 @@ Termdeck does not replace your Ghostty configuration.
 - Theme files and wallpaper assets are installed under `~/.config/termdeck`.
 - `termdeck uninstall` removes the managed integration and keeps a recovery copy.
 - Palette previews never modify the active terminal.
+- Update checks only read a public release feed; nothing is installed without an explicit confirmation.
 
 On macOS, Ghostty is managed at `~/Library/Application Support/com.mitchellh.ghostty/config`. Some opacity and titlebar changes can require a full Ghostty restart.
+
+## Updates
+
+Opening the Control Center checks for updates in the background. The first frame is never delayed by it: when an answer arrives, an alert names every version it would change and the exact command it would run.
+
+- **Termdeck** is compared against the published release. The upgrade command follows how this copy was installed — Homebrew, the curl installer, or npm. A source checkout is reported and never modified.
+- **Themes** are versioned independently. When the catalog has moved past the version recorded in your Ghostty config, the alert offers to apply it again.
+
+Nothing is installed, downloaded, or re-applied until the alert is answered with <kbd>Y</kbd>. <kbd>N</kbd> postpones that release and keeps it one <kbd>U</kbd> away.
+
+```sh
+termdeck update          # check, report, and ask before changing anything
+termdeck update --yes    # same, unattended
+```
+
+The check reads the public release feed once a day and caches the answer in `~/.config/termdeck/updates.json`. Setting `TERMDECK_NO_UPDATE_CHECK=1` turns it off entirely and leaves the local theme comparison as the only report.
 
 ## Versioning
 
@@ -203,6 +221,7 @@ termdeck random
 termdeck export cyber-circuit --target iterm2 --profile glass
 termdeck capabilities
 termdeck status
+termdeck update
 termdeck doctor
 termdeck uninstall
 ```

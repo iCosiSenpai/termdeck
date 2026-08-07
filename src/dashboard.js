@@ -4,6 +4,7 @@ import { defaultOutput, targets } from "./exporters.js";
 import { writeThemeExport } from "./export-package.js";
 import { applyGhostty, readState, reloadGhostty } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
+import { dismissUpdate } from "./updates.js";
 import { createPalette, crop, detectDepth, displayWidth, pad, tokens } from "./ui/ansi.js";
 import { composeRow, windowList } from "./ui/layout.js";
 import { createScreen } from "./ui/screen.js";
@@ -24,6 +25,7 @@ const bindings = [
   { hint: "X", label: "export", guide: "X", detail: "export the theme for every terminal" },
   { hint: "/", label: "filter", guide: "/", detail: "filter the catalog by typing", wideOnly: true },
   { hint: "R", label: "random", guide: "R", detail: "pick a random theme", wideOnly: true },
+  { hint: "U", label: "update", guide: "U", detail: "review the available update", whenUpdate: true },
   { hint: "?", label: "help", guide: "?", detail: "open or close this guide" },
   { hint: "Q", label: "quit", guide: "Q / Esc", detail: "close the control center" },
 ];
@@ -73,10 +75,10 @@ function profileEffects(profile) {
   return `${opacity}% opacity · ${blur} · ${options["window-padding-x"]}×${options["window-padding-y"]} padding · ${options["cursor-style"]} cursor`;
 }
 
-function keyHints(palette, list, compact) {
+function keyHints(palette, list, compact, hasUpdate = false) {
   const { bold, mint, muted, reset, white } = palette;
   const hints = list
-    .filter((binding) => binding.hint && !(compact && binding.wideOnly))
+    .filter((binding) => binding.hint && !(compact && binding.wideOnly) && !(binding.whenUpdate && !hasUpdate))
     .map((binding) => {
       const hint = compact ? binding.compactHint || binding.hint : binding.hint;
       return `${binding.accent ? mint : white}${bold}${hint}${reset}${muted} ${binding.label}`;
@@ -236,6 +238,65 @@ function helpPanel(palette, width) {
   ];
 }
 
+/**
+ * Wraps a command across panel lines so a confirmation never hides what runs.
+ * A token longer than the panel — a release URL — is split rather than cropped.
+ */
+function wrapText(value, limit) {
+  const lines = [];
+  let line = "";
+  const flush = () => {
+    if (line) lines.push(line);
+    line = "";
+  };
+  for (const word of String(value).split(" ")) {
+    let remaining = word;
+    if (line && displayWidth(`${line} ${remaining}`) > limit) flush();
+    while (displayWidth(remaining) > limit) {
+      flush();
+      lines.push(remaining.slice(0, limit));
+      remaining = remaining.slice(limit);
+    }
+    line = line ? `${line} ${remaining}` : remaining;
+  }
+  flush();
+  return lines;
+}
+
+/**
+ * The update alert. It states every version it would change, spells out the
+ * exact command it would run, and waits: nothing is installed or re-applied
+ * until this panel is answered with Y.
+ */
+function updatePanel(palette, width, updates) {
+  const { bold, dim, gold, mint, muted, panel, reset, white } = palette;
+  const inner = Math.min(76, Math.max(36, width - 10));
+  const edge = (left, right) => `${panel}${muted}${left}${"─".repeat(inner)}${right}${reset}`;
+  const body = (value, style = white) => `${panel}${muted}│${style}${pad(value, inner)}${muted}│${reset}`;
+  const rows = [edge("╭", "╮"), body(" ◆ UPDATE AVAILABLE", `${gold}${bold}`), body("")];
+
+  if (updates.app?.available) {
+    rows.push(body(` Termdeck ${updates.app.current} → ${updates.app.latest}`, `${white}${bold}`));
+    rows.push(body(`   installed with ${updates.installation.label}`, dim));
+  }
+  for (const theme of updates.themes) {
+    rows.push(body(` ${theme.name} ${theme.from} → ${theme.to}`, `${mint}${bold}`));
+    rows.push(body(`   re-applies the theme to Ghostty with the ${theme.profile} profile`, dim));
+  }
+
+  const command = updates.plan?.display || (updates.app?.available ? updates.installation.manual : null);
+  if (command) {
+    rows.push(body(""));
+    rows.push(body(updates.plan ? " Runs:" : " Update it yourself with:", muted));
+    for (const line of wrapText(command, inner - 2)) rows.push(body(`  ${line}`, dim));
+  }
+
+  rows.push(body(""));
+  rows.push(body(` ${updates.plan || updates.themes.length > 0 ? "Y  update now" : "Y  continue"}      N  later`, `${gold}${bold}`));
+  rows.push(edge("╰", "╯"));
+  return rows;
+}
+
 function statusLine({ theme, active, message, profileName, filter, filtering, matches, palette }) {
   const { cyan, dim, gold, mint, reset } = palette;
   if (message) {
@@ -252,7 +313,7 @@ function statusLine({ theme, active, message, profileName, filter, filtering, ma
  * pure functions of the state, and the frame decides where they go, so a small
  * terminal drops content instead of drawing over the controls.
  */
-export function buildFrame({ themes, themeIndex, profileIndex, active, message, help = false, filter = "", filtering = false, columns = 100, rows = 30, depth = 24 }) {
+export function buildFrame({ themes, themeIndex, profileIndex, active, message, help = false, updates = null, showingUpdate = false, filter = "", filtering = false, columns = 100, rows = 30, depth = 24 }) {
   const palette = createPalette(depth);
   const { bold, dim, gold, invert, mint, muted, reset, white } = palette;
   const width = Math.max(64, columns);
@@ -304,14 +365,14 @@ export function buildFrame({ themes, themeIndex, profileIndex, active, message, 
   }
 
   set(profileRow, [{ column: margin, value: profileBar(palette, profileIndex, width - 6) }]);
-  set(keysRow, [{ column: margin, value: keyHints(palette, filtering ? filterBindings : bindings, compact) }]);
+  set(keysRow, [{ column: margin, value: keyHints(palette, filtering ? filterBindings : bindings, compact, Boolean(updates?.available)) }]);
   set(statusRow, [{ column: margin, value: crop(statusLine({ theme, active, message, profileName, filter, filtering, matches: themes.length, palette }), width - 6) }]);
 
-  if (help) {
-    const box = helpPanel(palette, width);
-    const boxColumn = Math.max(1, Math.floor((width - displayWidth(box[0])) / 2) + 1);
-    const boxTop = Math.max(1, Math.floor((height - box.length) / 2) + 1);
-    box.forEach((line, index) => set(boxTop + index, [{ column: boxColumn, value: line }]));
+  const modal = help ? helpPanel(palette, width) : showingUpdate && updates?.available ? updatePanel(palette, width, updates) : null;
+  if (modal) {
+    const boxColumn = Math.max(1, Math.floor((width - displayWidth(modal[0])) / 2) + 1);
+    const boxTop = Math.max(1, Math.floor((height - modal.length) / 2) + 1);
+    modal.forEach((line, index) => set(boxTop + index, [{ column: boxColumn, value: line }]));
   }
 
   return { rows: frame, width, height };
@@ -334,6 +395,14 @@ export function exportEverywhere(theme, profileName, cwd = process.cwd()) {
   return { written, failed };
 }
 
+/** One line naming everything the alert would change, for the status row. */
+export function updateSummary(updates) {
+  const parts = [];
+  if (updates?.app?.available) parts.push(`Termdeck ${updates.app.latest}`);
+  for (const theme of updates?.themes ?? []) parts.push(`${theme.name} ${theme.to}`);
+  return parts.length > 0 ? `! Update available: ${parts.join(" · ")} — press U to review` : "";
+}
+
 /** Exit codes a shell expects after each terminating signal. */
 const SIGNAL_EXITS = { SIGHUP: 129, SIGINT: 130, SIGTERM: 143 };
 
@@ -346,7 +415,7 @@ function attempt(action) {
   }
 }
 
-export function openDashboard({ input = process.stdin, output = process.stdout } = {}) {
+export function openDashboard({ input = process.stdin, output = process.stdout, checkForUpdates = null, reload = reloadGhostty } = {}) {
   const themes = loadThemes();
   const names = Object.keys(profiles);
   let active = readState();
@@ -357,6 +426,9 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
   let showingHelp = false;
   let filter = "";
   let filtering = false;
+  let updates = null;
+  let showingUpdate = false;
+  let pendingUpgrade = null;
 
   if (!input.isTTY || !output.isTTY) throw new Error("The control center needs an interactive terminal. Use \"termdeck help\" for command mode.");
   const depth = detectDepth({ stream: output });
@@ -364,6 +436,7 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
   return new Promise((resolve, reject) => {
     const screen = createScreen({ output, redraw: () => draw() });
     const signalHandlers = new Map();
+    const updateCheck = new AbortController();
     let restored = false;
     let settled = false;
 
@@ -381,6 +454,8 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
       for (const [signal, handler] of signalHandlers) process.off(signal, handler);
       signalHandlers.clear();
       process.off("exit", restore);
+      // A release feed that is still answering must not hold the process open.
+      attempt(() => updateCheck.abort());
     }
 
     function close() {
@@ -388,7 +463,7 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
       settled = true;
       detach();
       restore();
-      resolve();
+      resolve(pendingUpgrade ? { update: pendingUpgrade } : undefined);
     }
 
     function fail(error) {
@@ -408,6 +483,8 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
           active,
           message,
           help: showingHelp,
+          updates,
+          showingUpdate,
           filter,
           filtering,
           columns: output.columns,
@@ -440,11 +517,11 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
       const profileName = names[profileIndex];
       try {
         applyGhostty({ theme, profile: getProfile(profileName), profileName, font: active?.font || null });
-        const reload = reloadGhostty();
+        const outcome = reload();
         active = readState();
-        return reload.reloaded
+        return outcome.reloaded
           ? `✓ ${theme.name} + ${profileName} applied — Ghostty reloaded`
-          : `✓ Applied — press ⌘⇧, to reload Ghostty (${reload.reason})`;
+          : `✓ Applied — press ⌘⇧, to reload Ghostty (${outcome.reason})`;
       } catch (error) {
         return `! ${error.message}`;
       }
@@ -471,6 +548,63 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
       runTask(`… Exporting ${theme.name} for ${targets.length} terminals`, exportSelection);
     }
 
+    /**
+     * Re-applies the themes whose catalog version moved ahead of the managed
+     * Ghostty config. Purely local: the files are already on disk.
+     */
+    function refreshThemes(pending) {
+      try {
+        for (const entry of pending) {
+          const theme = themes.find((candidate) => candidate.slug === entry.slug);
+          if (!theme) continue;
+          applyGhostty({ theme, profile: getProfile(entry.profile), profileName: entry.profile, font: entry.font });
+        }
+        const outcome = reload();
+        active = readState();
+        const label = pending.map((entry) => `${entry.name} ${entry.to}`).join(", ");
+        return outcome.reloaded
+          ? `✓ Refreshed ${label} — Ghostty reloaded`
+          : `✓ Refreshed ${label} — press ⌘⇧, to reload Ghostty (${outcome.reason})`;
+      } catch (error) {
+        return `! ${error.message}`;
+      }
+    }
+
+    /**
+     * The answer to the alert. An application upgrade rewrites the files this
+     * process is running from, so it is handed back to the caller and performed
+     * once the terminal has been restored; a theme refresh is local and runs here.
+     */
+    function confirmUpdate() {
+      showingUpdate = false;
+      if (updates?.plan) {
+        pendingUpgrade = updates;
+        return close();
+      }
+      const pending = updates?.themes ?? [];
+      const manual = updates?.app?.available ? ` · update Termdeck with: ${updates.installation.manual}` : "";
+      if (pending.length === 0) {
+        message = manual ? `! Update Termdeck with: ${updates.installation.manual}` : "";
+        return draw();
+      }
+      const label = pending.map((entry) => entry.name).join(", ");
+      runTask(`… Refreshing ${label}`, () => {
+        const outcome = refreshThemes(pending);
+        updates = { ...updates, themes: [], available: Boolean(updates.app?.available), alert: false };
+        return `${outcome}${manual}`;
+      });
+    }
+
+    function onUpdateKey(value, key) {
+      if (key.name === "y" || value === "y" || key.name === "return") return confirmUpdate();
+      if (key.name === "n" || value === "n" || key.name === "u" || value === "u" || key.name === "escape") {
+        showingUpdate = false;
+        if (updates?.app?.available) attempt(() => dismissUpdate({ version: updates.app.latest }));
+        message = "Update postponed — press U to review it again";
+        draw();
+      }
+    }
+
     function onFilterKey(value, key) {
       if (key.name === "escape") {
         filtering = false;
@@ -495,11 +629,13 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
     function onKey(value, key = {}) {
       try {
         if (key.ctrl && key.name === "c") return close();
+        if (showingUpdate) return onUpdateKey(value, key);
         if (filtering) return onFilterKey(value, key);
         if (key.name === "q" || key.name === "escape") return close();
         if (key.name === "?" || value === "?") { showingHelp = !showingHelp; draw(); return; }
         if (showingHelp) return;
         message = "";
+        if (key.name === "u" && updates?.available) { showingUpdate = true; draw(); return; }
         if (key.name === "x") return exportAll();
         if (key.name === "return") return apply();
         if (value === "/") filtering = true;
@@ -534,5 +670,22 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
     process.on("exit", restore);
 
     draw();
+
+    // The check starts only after the deck is on screen, so a slow release feed
+    // can never delay the first frame. Its answer arrives as the update alert.
+    if (checkForUpdates) {
+      Promise.resolve()
+        .then(() => checkForUpdates({ signal: updateCheck.signal, state: active }))
+        .then((result) => {
+          if (settled || !result?.available) return;
+          updates = result;
+          showingUpdate = Boolean(result.alert) && !filtering && !showingHelp;
+          message = showingUpdate ? "" : updateSummary(result);
+          draw();
+        })
+        .catch(() => {
+          // An unreachable release feed is not worth interrupting the deck for.
+        });
+    }
   });
 }

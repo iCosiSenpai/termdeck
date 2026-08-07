@@ -201,6 +201,199 @@ test("typing narrows the catalog and Escape restores it", async () => {
   await closed;
 });
 
+/** A check result shaped exactly like the one `checkUpdates` returns. */
+const pendingUpdate = Object.freeze({
+  current: "0.3.0",
+  app: Object.freeze({ current: "0.3.0", latest: "0.4.0", url: "https://example.test/0.4.0", available: true }),
+  themes: Object.freeze([Object.freeze({ slug: "tokyo-midnight", name: "Tokyo Midnight", from: "1.0.0", to: "1.1.0", profile: "glass", font: null })]),
+  installation: Object.freeze({ kind: "homebrew", label: "Homebrew", manual: "brew upgrade iCosiSenpai/tap/termdeck" }),
+  plan: Object.freeze({ command: "brew", args: ["upgrade", "iCosiSenpai/tap/termdeck"], display: "brew upgrade iCosiSenpai/tap/termdeck" }),
+  reason: null,
+  available: true,
+  dismissed: null,
+  alert: true,
+});
+
+test("the update alert names every version and the exact command it would run", () => {
+  const state = { themes: loadThemes(), themeIndex: 0, profileIndex: 0, columns: 100, rows: 30 };
+  const frame = buildFrame({ ...state, updates: pendingUpdate, showingUpdate: true });
+  const plain = stripAnsi(frame.rows.join("\n"));
+
+  assert.match(plain, /◆ UPDATE AVAILABLE/);
+  assert.match(plain, /Termdeck 0\.3\.0 → 0\.4\.0/);
+  assert.match(plain, /installed with Homebrew/);
+  assert.match(plain, /Tokyo Midnight 1\.0\.0 → 1\.1\.0/);
+  assert.match(plain, /re-applies the theme to Ghostty with the glass profile/);
+  assert.match(plain, /Runs:/);
+  assert.match(plain, /brew upgrade iCosiSenpai\/tap\/termdeck/);
+  assert.match(plain, /Y {2}update now {6}N {2}later/);
+  assert.match(stripAnsi(frame.rows.at(-4)), /U update/, "the footer advertises the key that reopens the alert");
+  for (const row of frame.rows) assert.ok(displayWidth(row) <= frame.width);
+
+  const withoutUpdate = stripAnsi(buildFrame(state).rows.at(-4));
+  assert.doesNotMatch(withoutUpdate, /U update/, "and hides it when there is nothing to update");
+
+  const checkout = stripAnsi(buildFrame({
+    ...state,
+    columns: 64,
+    rows: 20,
+    updates: { ...pendingUpdate, plan: null, themes: [] },
+    showingUpdate: true,
+  }).rows.join("\n"));
+  assert.match(checkout, /Update it yourself with:/, "an installation it cannot upgrade says so");
+  assert.match(checkout, /brew upgrade/);
+});
+
+test("a command too long for the panel is split across lines, never cropped away", () => {
+  const display = "curl -fsSL https://raw.githubusercontent.com/iCosiSenpai/termdeck/main/install.sh | TERMDECK_VERSION=v0.4.0 sh";
+  const frame = buildFrame({
+    themes: loadThemes(),
+    themeIndex: 0,
+    profileIndex: 0,
+    columns: 64,
+    rows: 20,
+    showingUpdate: true,
+    updates: {
+      ...pendingUpdate,
+      installation: { kind: "installer", label: "curl installer", manual: display },
+      plan: { command: "/bin/sh", args: ["-c", display], display },
+    },
+  });
+
+  const panelText = stripAnsi(frame.rows.join("\n"))
+    .split("\n")
+    .map((row) => row.match(/│(.*)│/)?.[1] ?? "")
+    .join("")
+    .replaceAll(" ", "");
+  assert.ok(panelText.includes(display.replaceAll(" ", "")), "the whole command survives a narrow terminal");
+  for (const row of frame.rows) assert.ok(displayWidth(row) <= frame.width);
+});
+
+/** Redirects Termdeck's home for the duration of a test, so none of them writes to the real one. */
+async function withSandboxedHome(body) {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "termdeck-deck-home-"));
+  const previous = { home: process.env.TERMDECK_HOME, config: process.env.TERMDECK_GHOSTTY_CONFIG };
+  process.env.TERMDECK_HOME = path.join(home, "termdeck");
+  process.env.TERMDECK_GHOSTTY_CONFIG = path.join(home, "ghostty", "config");
+  try {
+    return await body({ termdeckHome: process.env.TERMDECK_HOME, config: process.env.TERMDECK_GHOSTTY_CONFIG });
+  } finally {
+    for (const [key, value] of [["TERMDECK_HOME", previous.home], ["TERMDECK_GHOSTTY_CONFIG", previous.config]]) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    fs.rmSync(home, { recursive: true, force: true });
+  }
+}
+
+test("the deck alerts after it opens and only updates once the alert is confirmed", async () => {
+  await withSandboxedHome(async () => {
+    const { input, output } = fakeTerminal();
+    let checks = 0;
+    const closed = openDashboard({
+      input,
+      output,
+      checkForUpdates: async () => {
+        checks += 1;
+        return pendingUpdate;
+      },
+    });
+
+    assert.doesNotMatch(stripAnsi(output.flush()), /UPDATE AVAILABLE/, "the first frame never waits for the network");
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(checks, 1);
+    assert.match(stripAnsi(output.flush()), /UPDATE AVAILABLE/, "the alert arrives on its own");
+
+    input.emit("keypress", "y", { name: "y" });
+    assert.deepEqual(await closed, { update: pendingUpdate }, "the upgrade is handed back for the restored terminal");
+    assert.equal(input.rawMode, false, "and the deck lets go of the terminal first");
+  });
+});
+
+test("a release that was already postponed is reported quietly instead of interrupting", async () => {
+  await withSandboxedHome(async () => {
+    const { input, output } = fakeTerminal();
+    const closed = openDashboard({ input, output, checkForUpdates: async () => ({ ...pendingUpdate, alert: false }) });
+    output.flush();
+
+    await new Promise((resolve) => setImmediate(resolve));
+    const quiet = stripAnsi(output.flush());
+    assert.doesNotMatch(quiet, /UPDATE AVAILABLE/, "a postponed release does not reopen the alert on its own");
+    assert.match(quiet, /! Update available: Termdeck 0\.4\.0 · Tokyo Midnight 1\.1\.0 — press U to review/);
+    assert.match(quiet, /U update/, "but the key that reopens it is advertised");
+
+    input.emit("keypress", "u", { name: "u" });
+    assert.match(stripAnsi(output.flush()), /UPDATE AVAILABLE/);
+
+    input.emit("keypress", "\u001b", { name: "escape" });
+    output.flush();
+    input.emit("keypress", "\u001b", { name: "escape" });
+    await closed;
+  });
+});
+
+test("postponing the alert records it and keeps it one keypress away", async () => {
+  await withSandboxedHome(async ({ termdeckHome }) => {
+    const { input, output } = fakeTerminal();
+    const closed = openDashboard({ input, output, checkForUpdates: async () => pendingUpdate });
+    await new Promise((resolve) => setImmediate(resolve));
+    output.flush();
+
+    input.emit("keypress", "n", { name: "n" });
+    const postponed = stripAnsi(output.flush());
+    assert.doesNotMatch(postponed, /UPDATE AVAILABLE/);
+    assert.match(postponed, /Update postponed — press U to review it again/);
+    assert.equal(
+      JSON.parse(fs.readFileSync(path.join(termdeckHome, "updates.json"), "utf8")).dismissed,
+      "0.4.0",
+      "the postponed release is remembered so the next launch stays quiet",
+    );
+
+    input.emit("keypress", "u", { name: "u" });
+    assert.match(stripAnsi(output.flush()), /UPDATE AVAILABLE/, "U reopens it on demand");
+
+    input.emit("keypress", "\u001b", { name: "escape" });
+    output.flush();
+    input.emit("keypress", "\u001b", { name: "escape" });
+    assert.equal(await closed, undefined, "postponing leaves the caller nothing to run");
+  });
+});
+
+test("confirming a theme refresh rewrites the managed Ghostty block in place", async () => {
+  await withSandboxedHome(async ({ config }) => {
+    const theme = loadThemes()[0];
+    const updates = {
+      ...pendingUpdate,
+      plan: null,
+      installation: { kind: "source", label: "source checkout", manual: "git pull" },
+      themes: [{ slug: theme.slug, name: theme.name, from: "0.9.0", to: theme.version, profile: "focus", font: null }],
+    };
+    const { input, output } = fakeTerminal();
+    const closed = openDashboard({
+      input,
+      output,
+      checkForUpdates: async () => updates,
+      reload: () => ({ reloaded: true, reason: null }),
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    output.flush();
+
+    input.emit("keypress", "\r", { name: "return" });
+    const outcome = stripAnsi(output.flush());
+    assert.match(outcome, new RegExp(`Refreshing ${theme.name}`), "the refresh announces itself before it blocks");
+    assert.match(outcome, new RegExp(`✓ Refreshed ${theme.name} ${theme.version} — Ghostty reloaded`));
+    assert.match(outcome, /update Termdeck with: git pull/, "and still reports the upgrade it cannot perform");
+    assert.match(
+      fs.readFileSync(config, "utf8"),
+      new RegExp(`theme: ${theme.name} v${theme.version} \\| profile: focus`),
+      "the managed block now carries the current theme version",
+    );
+
+    input.emit("keypress", "\u001b", { name: "escape" });
+    await closed;
+  });
+});
+
 test("exporting reports every target instead of claiming blanket success", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "termdeck-deck-export-"));
   const theme = loadThemes().find((item) => item.slug === "nordic-aurora");

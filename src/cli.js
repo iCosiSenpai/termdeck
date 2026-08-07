@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import readline from "node:readline/promises";
 import { execFileSync } from "node:child_process";
 import { getTheme, loadThemes, packageMetadata, pickRandomTheme } from "./catalog.js";
 import { defaultOutput, targets } from "./exporters.js";
@@ -8,6 +9,7 @@ import { capabilityLabels, terminalCapabilities } from "./capabilities.js";
 import { applyGhostty, readState, reloadGhostty, resolvePaths, uninstallGhostty } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
 import { openDashboard } from "./dashboard.js";
+import { checkUpdates, refreshCommand, runUpgrade } from "./updates.js";
 import { createPalette, detectDepth } from "./ui/ansi.js";
 
 const palette = createPalette(detectDepth({ stream: process.stdout }));
@@ -44,6 +46,7 @@ Usage:
   termdeck capabilities
   termdeck profiles
   termdeck status
+  termdeck update [--yes]
   termdeck version
   termdeck doctor
   termdeck uninstall
@@ -79,6 +82,92 @@ function preview(theme) {
 
 function optionValue(options, key, fallback) {
   return typeof options[key] === "string" ? options[key] : fallback;
+}
+
+function flag(options, key) {
+  return options[key] === true || /^(1|y|yes|true)$/i.test(String(options[key] ?? ""));
+}
+
+/** Everything the check found, stated before anything is asked or executed. */
+function reportUpdates(result) {
+  if (result.app?.available) {
+    console.log(`${c.yellow}◆${c.reset} Termdeck ${c.bold}${result.app.current} → ${result.app.latest}${c.reset} ${c.dim}(installed with ${result.installation.label})${c.reset}`);
+    console.log(`  ${c.dim}${result.app.url}${c.reset}`);
+  } else if (result.app) {
+    console.log(`${c.green}✓${c.reset} Termdeck v${result.current} is the latest release.`);
+  } else {
+    console.log(`${c.yellow}!${c.reset} Release check skipped: ${result.reason}`);
+  }
+  for (const theme of result.themes) {
+    console.log(`${c.yellow}◆${c.reset} ${c.bold}${theme.name} ${theme.from} → ${theme.to}${c.reset} ${c.dim}(re-applies with the ${theme.profile} profile)${c.reset}`);
+  }
+  if (result.themes.length === 0) console.log(`${c.green}✓${c.reset} No theme refresh is pending.`);
+  if (result.plan) console.log(`\n${c.dim}Will run: ${result.plan.display}${c.reset}`);
+  else if (result.app?.available) console.log(`\n${c.dim}This installation updates manually: ${result.installation.manual}${c.reset}`);
+}
+
+async function confirm(question) {
+  if (!process.stdin.isTTY) {
+    throw new Error("Confirmation needs an interactive terminal. Re-run with --yes to update unattended.");
+  }
+  const prompt = readline.createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    return /^(y|yes)$/i.test((await prompt.question(`${question} ${c.dim}[y/N]${c.reset} `)).trim());
+  } finally {
+    prompt.close();
+  }
+}
+
+/**
+ * Performs a confirmed update. The application upgrade runs first, because it is
+ * what brings new theme definitions; the theme is then re-applied through the
+ * freshly installed launcher instead of this process, whose own files the
+ * upgrade may have just replaced.
+ */
+function performUpdate(result) {
+  if (result.plan) {
+    console.log(`${c.cyan}…${c.reset} ${result.plan.display}\n`);
+    runUpgrade({ plan: result.plan });
+    console.log(`\n${c.green}✓${c.reset} Termdeck ${result.app.latest} installed.`);
+    for (const theme of result.themes) {
+      const refresh = refreshCommand(theme);
+      try {
+        execFileSync(refresh.command, refresh.args, { stdio: "inherit" });
+      } catch {
+        console.log(`${c.yellow}!${c.reset} Refresh ${theme.name} yourself with: ${c.bold}${refresh.display}${c.reset}`);
+      }
+    }
+    console.log(`${c.dim}Relaunch termdeck to open the new release.${c.reset}`);
+    return;
+  }
+  for (const theme of result.themes) {
+    apply(theme.slug, theme.font ? { profile: theme.profile, font: theme.font } : { profile: theme.profile });
+  }
+  if (result.app?.available) {
+    console.log(`${c.yellow}!${c.reset} Update Termdeck yourself with: ${c.bold}${result.installation.manual}${c.reset}`);
+  }
+}
+
+async function update(options) {
+  const result = await checkUpdates({ force: true });
+  reportUpdates(result);
+  if (!result.available) return;
+  if (!flag(options, "yes")) {
+    const question = result.plan ? "\nRun the upgrade now?" : "\nApply these updates now?";
+    if (!(await confirm(question))) {
+      console.log("Nothing was changed.");
+      return;
+    }
+  }
+  performUpdate(result);
+}
+
+/** Opens the deck with the update check attached, and honours what it answered. */
+async function openDeck() {
+  const outcome = await openDashboard({
+    checkForUpdates: ({ signal, state }) => checkUpdates({ signal, state }),
+  });
+  if (outcome?.update) performUpdate(outcome.update);
 }
 
 function apply(themeSlug, options) {
@@ -120,7 +209,7 @@ function doctor() {
 export async function run(argv) {
   const [command, ...rest] = argv;
   if (!command) {
-    if (process.stdin.isTTY && process.stdout.isTTY) await openDashboard();
+    if (process.stdin.isTTY && process.stdout.isTTY) await openDeck();
     else help();
     return;
   }
@@ -129,7 +218,7 @@ export async function run(argv) {
     case "help":
     case "--help":
     case "-h": help(); break;
-    case "dashboard": await openDashboard(); break;
+    case "dashboard": await openDeck(); break;
     case "list":
       console.log(`${c.bold}Theme deck${c.reset}\n`);
       for (const category of ["core", "special"]) {
@@ -185,6 +274,7 @@ export async function run(argv) {
       else console.log(`${c.bold}${state.theme}@${state.themeVersion || "unknown"}${c.reset} · ${state.profile}\n${c.dim}${state.config}\nApplied ${state.appliedAt}${c.reset}`);
       break;
     }
+    case "update": await update(options); break;
     case "version":
     case "--version":
     case "-v":
