@@ -4,7 +4,6 @@ export const profiles = {
     options: {
       "background-opacity": "0.94",
       "background-blur": "18",
-      "font-size": "14",
       "window-padding-x": "14",
       "window-padding-y": "12",
       "window-padding-balance": "true",
@@ -19,7 +18,6 @@ export const profiles = {
     options: {
       "background-opacity": "1",
       "background-blur": "false",
-      "font-size": "14",
       "window-padding-x": "16",
       "window-padding-y": "14",
       "window-padding-balance": "true",
@@ -35,7 +33,6 @@ export const profiles = {
       "background-opacity": "0.86",
       "background-blur": "32",
       "background-opacity-cells": "true",
-      "font-size": "14",
       "window-padding-x": "16",
       "window-padding-y": "14",
       "window-padding-balance": "true",
@@ -46,11 +43,10 @@ export const profiles = {
     },
   },
   presentation: {
-    label: "Large type and solid contrast for sharing",
+    label: "Solid contrast and generous spacing for sharing",
     options: {
       "background-opacity": "1",
       "background-blur": "false",
-      "font-size": "18",
       "window-padding-x": "22",
       "window-padding-y": "18",
       "window-padding-balance": "true",

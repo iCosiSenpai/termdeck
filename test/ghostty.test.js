@@ -35,6 +35,7 @@ test("apply writes a managed config and uninstall restores user lines", () => {
   assert.match(applied, /background-image = /);
   assert.match(applied, /Resonant Rover v1\.0\.0/);
   assert.match(applied, /font-family = Test Mono/);
+  assert.doesNotMatch(applied, /^font-size\s*=/m);
   assert.ok(fs.existsSync(result.wallpaperFile));
   assert.equal(JSON.parse(fs.readFileSync(result.state, "utf8")).themeVersion, "1.0.0");
 

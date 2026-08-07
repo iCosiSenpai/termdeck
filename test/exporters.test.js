@@ -17,6 +17,7 @@ test("Ghostty output includes all palette slots", () => {
   for (let index = 0; index < 16; index += 1) assert.match(output, new RegExp(`palette = ${index}=`));
   assert.match(output, /background-image = /);
   assert.match(output, /window-padding-x = 14/);
+  assert.doesNotMatch(output, /^font-size\s*=/m);
 });
 
 test("iTerm output is a full Dynamic Profile", () => {

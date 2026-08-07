@@ -22,7 +22,6 @@ function settings(options = {}) {
     cursor: values["cursor-style"] || "block",
     cursorBlink: String(values["cursor-style-blink"]) === "true",
     titlebar: values["macos-titlebar-style"] || "tabs",
-    fontSize: number("font-size", 14),
     wallpaperPath: options.wallpaperPath || path.posix.join("assets", path.basename(options.theme?.wallpaper || "wallpaper.png")),
   };
 }

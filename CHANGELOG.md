@@ -13,6 +13,7 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 - Added a source-of-truth capability registry and `termdeck capabilities` command.
 - Added reliable Ghostty reload through its native macOS scripting action after applying a theme.
 - Renamed the ambiguous Control Center mode selector to Terminal Profile and added an in-context description of its visual effects.
+- Stopped all terminal profiles from overriding the user's font size; Ghostty now keeps its stock or user-configured value.
 - Established granitic commit rules for durable, atomic checkpoints and release isolation.
 
 ## [0.3.0] - 2026-08-07

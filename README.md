@@ -44,7 +44,7 @@ The fallback installer is intentionally small and auditable. It requires Node.js
 
 Running `termdeck` opens the full-screen deck. No theme names to memorize and no configuration file to hand-edit.
 
-The **Terminal Profile** is the behavior layer applied on top of the selected theme. It controls opacity, blur, font size, padding, cursor, titlebar, and inactive-pane treatment; changing profile does not change the palette or artwork. Its description and exact effects are displayed beside the active selection in the Control Center.
+The **Terminal Profile** is the behavior layer applied on top of the selected theme. It controls opacity, blur, padding, cursor, titlebar, and inactive-pane treatment; changing profile does not change the palette, artwork, or your font size. Its description and exact effects are displayed beside the active selection in the Control Center.
 
 | Key | Action |
 | :---: | --- |
@@ -64,7 +64,7 @@ The dashboard displays the Termdeck release, selected theme version, active setu
 | **Cozy** | Everyday work | Soft translucency, balanced padding |
 | **Focus** | Deep coding sessions | Solid contrast, hidden chrome, dim inactive splits |
 | **Glass** | Desktop aesthetics | Frosted macOS blur and visible artwork |
-| **Presentation** | Screen sharing | Larger type, solid background, generous spacing |
+| **Presentation** | Screen sharing | Solid background and generous spacing |
 
 ## Theme Gallery
 
