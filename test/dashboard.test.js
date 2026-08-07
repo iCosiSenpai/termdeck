@@ -16,6 +16,10 @@ test("dashboard renders the selected theme, profiles, and controls", () => {
   assert.match(output, /GLASS/);
   assert.match(output, /ENTER/);
   assert.match(output, /LIVE PREVIEW/);
+  assert.match(output, /TERMINAL PROFILE/);
+  assert.match(output, /Frosted macOS glass and visible artwork/);
+  assert.match(output, /86% opacity/);
+  assert.match(output, /← → change/);
   assert.match(output, /CORE COLLECTION/);
   assert.match(output, /SPECIAL EDITIONS/);
   assert.match(output, /github\.com\/iCosiSenpai\/termdeck/);
@@ -25,4 +29,5 @@ test("dashboard has a compact layout", () => {
   const output = renderDashboard({ themes: loadThemes(), themeIndex: 0, profileIndex: 0, columns: 70, rows: 22 });
   assert.match(output, /CONTROL CENTER/);
   assert.match(output, /Carbon M/);
+  assert.match(output, /TERMINAL PROFILE/);
 });

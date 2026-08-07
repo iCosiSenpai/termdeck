@@ -11,6 +11,8 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 - Added native Apple Terminal and Warp theme packages, including terminal-specific wallpaper handling.
 - Expanded Alacritty output with its supported opacity, macOS blur, padding, decorations, and cursor options while explicitly excluding unsupported background images and panes.
 - Added a source-of-truth capability registry and `termdeck capabilities` command.
+- Added reliable Ghostty reload through its native macOS scripting action after applying a theme.
+- Renamed the ambiguous Control Center mode selector to Terminal Profile and added an in-context description of its visual effects.
 - Established granitic commit rules for durable, atomic checkpoints and release isolation.
 
 ## [0.3.0] - 2026-08-07

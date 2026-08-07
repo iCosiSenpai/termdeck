@@ -19,7 +19,7 @@ const c = {
 };
 
 function help() {
-  console.log(`${c.bold}Termdeck v${packageMetadata.version}${c.reset} — cinematic themes and modes for your terminal
+  console.log(`${c.bold}Termdeck v${packageMetadata.version}${c.reset} — cinematic themes and terminal profiles
 
 Usage:
   termdeck                         Open the interactive control center

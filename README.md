@@ -44,10 +44,12 @@ The fallback installer is intentionally small and auditable. It requires Node.js
 
 Running `termdeck` opens the full-screen deck. No theme names to memorize and no configuration file to hand-edit.
 
+The **Terminal Profile** is the behavior layer applied on top of the selected theme. It controls opacity, blur, font size, padding, cursor, titlebar, and inactive-pane treatment; changing profile does not change the palette or artwork. Its description and exact effects are displayed beside the active selection in the Control Center.
+
 | Key | Action |
 | :---: | --- |
 | <kbd>↑</kbd> <kbd>↓</kbd> | Browse Core Themes and Special Editions |
-| <kbd>←</kbd> <kbd>→</kbd> | Switch between Cozy, Focus, Glass, and Presentation |
+| <kbd>←</kbd> <kbd>→</kbd> | Switch the Terminal Profile: Cozy, Focus, Glass, or Presentation |
 | <kbd>Enter</kbd> | Apply the selected theme and profile to Ghostty |
 | <kbd>X</kbd> | Export the full native package for every supported terminal |
 | <kbd>R</kbd> | Pick a random look |

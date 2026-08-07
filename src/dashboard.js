@@ -54,7 +54,14 @@ function profileBar(selected, width) {
     const label = width < 82 ? ` ${index + 1} ${name.slice(0, 5).toUpperCase()} ` : ` ${index + 1} ${name.toUpperCase()} `;
     return index === selected ? `${rgb("#67E8F9", true)}${ESC}38;2;8;11;22m${bold}${label}${reset}` : `${panel}${muted}${label}${reset}`;
   });
-  return `MODE  ${chips.join(" ")}`;
+  return `TERMINAL PROFILE  ${chips.join(" ")}`;
+}
+
+function profileEffects(profile) {
+  const options = profile.options;
+  const opacity = Math.round(Number(options["background-opacity"]) * 100);
+  const blur = options["background-blur"] === "false" ? "no blur" : `${options["background-blur"]}px blur`;
+  return `${opacity}% opacity · ${blur} · ${options["window-padding-x"]}×${options["window-padding-y"]} padding · ${options["cursor-style"]} cursor`;
 }
 
 export function renderDashboard({ themes, themeIndex, profileIndex, active, message, help = false, columns = 100, rows = 30 }) {
@@ -63,6 +70,7 @@ export function renderDashboard({ themes, themeIndex, profileIndex, active, mess
   const compact = width < 88 || height < 26;
   const theme = themes[themeIndex];
   const profileName = Object.keys(profiles)[profileIndex];
+  const profile = profiles[profileName];
   const leftWidth = compact ? 24 : 31;
   const rightColumn = leftWidth + 5;
   const rightWidth = Math.max(30, width - rightColumn - 2);
@@ -101,14 +109,15 @@ export function renderDashboard({ themes, themeIndex, profileIndex, active, mess
   write(detailTop + 4, rightColumn, theme.palette.slice(8).map((color) => swatch(color, compact ? 3 : 5)).join(" "));
   write(detailTop + 6, rightColumn, `${dim}BACKGROUND${reset} ${swatch(theme.background, 8)}  ${dim}TEXT${reset} ${swatch(theme.foreground, 8)}  ${dim}CURSOR${reset} ${swatch(theme.cursor, 8)}`);
   const footer = height - 5;
-  if (detailTop + 8 < footer) write(detailTop + 8, rightColumn, `${rgb(theme.palette[6])}const${reset} deck = ${rgb(theme.palette[3])}"${theme.slug}"${reset};`);
-  if (detailTop + 9 < footer) write(detailTop + 9, rightColumn, `${rgb(theme.palette[2])}termdeck${reset} ${muted}›${reset} ready to make the terminal yours`);
-  if (theme.wallpaper && detailTop + 11 < footer) write(detailTop + 11, rightColumn, `${gold}◆ Wallpaper included${reset}  ${dim}Ghostty · WezTerm · Kitty · iTerm2 · Terminal · Warp${reset}`);
+  if (detailTop + 8 < footer) write(detailTop + 8, rightColumn, `${bold}${white}TERMINAL PROFILE${reset}  ${cyan}${profileName.toUpperCase()}${reset}  ${muted}← → change${reset}`);
+  if (detailTop + 9 < footer) write(detailTop + 9, rightColumn, `${white}${crop(profile.label, rightWidth)}${reset}`);
+  if (detailTop + 10 < footer) write(detailTop + 10, rightColumn, `${dim}${crop(profileEffects(profile), rightWidth)}${reset}`);
+  if (theme.wallpaper && detailTop + 12 < footer) write(detailTop + 12, rightColumn, `${gold}◆ Wallpaper included${reset}  ${dim}Ghostty · WezTerm · Kitty · iTerm2 · Terminal · Warp${reset}`);
 
   write(footer, 3, profileBar(profileIndex, width - 6));
   const keys = compact
-    ? `${white}${bold}↑↓${reset}${muted} theme  ${white}${bold}←→${reset}${muted} mode  ${mint}${bold}ENTER${reset}${muted} apply  ${white}${bold}X${reset}${muted} export  ${white}${bold}?${reset}${muted} help  ${white}${bold}Q${reset}${muted} quit${reset}`
-    : `${white}${bold}↑↓${reset}${muted} theme  ${white}${bold}←→ / 1–4${reset}${muted} mode  ${mint}${bold}ENTER${reset}${muted} apply  ${white}${bold}X${reset}${muted} export  ${white}${bold}R${reset}${muted} random  ${white}${bold}?${reset}${muted} help  ${white}${bold}Q${reset}${muted} quit${reset}`;
+    ? `${white}${bold}↑↓${reset}${muted} theme  ${white}${bold}←→${reset}${muted} profile  ${mint}${bold}ENTER${reset}${muted} apply  ${white}${bold}X${reset}${muted} export  ${white}${bold}?${reset}${muted} help  ${white}${bold}Q${reset}${muted} quit${reset}`
+    : `${white}${bold}↑↓${reset}${muted} theme  ${white}${bold}←→ / 1–4${reset}${muted} profile  ${mint}${bold}ENTER${reset}${muted} apply  ${white}${bold}X${reset}${muted} export  ${white}${bold}R${reset}${muted} random  ${white}${bold}?${reset}${muted} help  ${white}${bold}Q${reset}${muted} quit${reset}`;
   write(footer + 2, 3, keys);
   if (message) write(footer + 3, 3, `${message.startsWith("✓") ? mint : gold}${crop(message, width - 6)}${reset}`);
   else write(footer + 3, 3, `${dim}Selected: ${theme.slug} · ${profileName}${active ? `  |  Active: ${active.theme} · ${active.profile}` : ""}${reset}`);
@@ -121,8 +130,8 @@ export function renderDashboard({ themes, themeIndex, profileIndex, active, mess
       " TERMDECK KEYS",
       "",
       " ↑ / ↓ or J / K     browse themes",
-      " ← / → or H / L     change working mode",
-      " 1–4                 select mode directly",
+      " ← / → or H / L     change terminal profile",
+      " 1–4                 select profile directly",
       " Enter               apply selection to Ghostty",
       " X                   export theme for every terminal",
       " R                   pick a random theme",
