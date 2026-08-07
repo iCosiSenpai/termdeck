@@ -19,6 +19,9 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 - Made artwork provenance mandatory catalog metadata and added an automatically verified wallpaper notice for future themes.
 - Parsed and validated the theme catalog once per process and shared it as immutable data instead of re-reading every theme file on each lookup.
 - Measured Control Center text in terminal columns and degraded its palette to 256-colour, 16-colour, and monochrome terminals instead of assuming truecolor.
+- Rebuilt the Control Center from pure panels composed into one row per terminal line, so the catalog, live preview, and controls can no longer draw over each other on small terminals.
+- Added a scrolling viewport with hidden-item indicators to the theme catalog, keeping the selection on screen and the controls intact as the deck grows.
+- Generated the footer hints and the keyboard guide from a single keymap, and framed the guide as a proper modal.
 
 ### Theme releases
 

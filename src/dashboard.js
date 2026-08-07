@@ -4,7 +4,27 @@ import { defaultOutput, targets } from "./exporters.js";
 import { writeThemeExport } from "./export-package.js";
 import { applyGhostty, readState, reloadGhostty } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
-import { controls, createPalette, crop, detectDepth, move, pad, tokens } from "./ui/ansi.js";
+import { controls, createPalette, crop, detectDepth, displayWidth, move, pad, tokens } from "./ui/ansi.js";
+import { composeRow, windowList } from "./ui/layout.js";
+
+const REPOSITORY = "github.com/iCosiSenpai/termdeck";
+const AUTHOR = "github.com/iCosiSenpai";
+
+/**
+ * Every binding, declared once. The footer renders the entries that carry a
+ * `hint`; the keyboard guide renders the entries that carry a `guide`. Adding a
+ * key in one place keeps both surfaces in agreement.
+ */
+const bindings = [
+  { hint: "↑↓", label: "theme", guide: "↑ / ↓ or J / K", detail: "browse themes" },
+  { hint: "←→ / 1–4", compactHint: "←→", label: "profile", guide: "← / → or H / L", detail: "change terminal profile" },
+  { guide: "1–4", detail: "select a profile directly" },
+  { hint: "ENTER", label: "apply", guide: "Enter", detail: "apply the selection to Ghostty", accent: true },
+  { hint: "X", label: "export", guide: "X", detail: "export the theme for every terminal" },
+  { hint: "R", label: "random", guide: "R", detail: "pick a random theme", wideOnly: true },
+  { hint: "?", label: "help", guide: "?", detail: "open or close this guide" },
+  { hint: "Q", label: "quit", guide: "Q / Esc", detail: "close the control center" },
+];
 
 function logo(palette, compact = false) {
   const { bold, dim, reset, cyan, mint, violet, white } = palette;
@@ -20,7 +40,7 @@ function profileBar(palette, selected, width) {
   const { bold, reset, ink, invert, muted, panel } = palette;
   const names = Object.keys(profiles);
   const chips = names.map((name, index) => {
-    const label = width < 82 ? ` ${index + 1} ${name.slice(0, 5).toUpperCase()} ` : ` ${index + 1} ${name.toUpperCase()} `;
+    const label = ` ${index + 1} ${width < 82 ? crop(name.toUpperCase(), 5) : name.toUpperCase()} `;
     if (index !== selected) return `${panel}${muted}${label}${reset}`;
     const highlight = palette.colored ? `${palette.bg(tokens.cyan)}${ink}` : invert;
     return `${highlight}${bold}${label}${reset}`;
@@ -35,87 +55,172 @@ function profileEffects(profile) {
   return `${opacity}% opacity · ${blur} · ${options["window-padding-x"]}×${options["window-padding-y"]} padding · ${options["cursor-style"]} cursor`;
 }
 
-export function renderDashboard({ themes, themeIndex, profileIndex, active, message, help = false, columns = 100, rows = 30, depth = 24 }) {
+function keyHints(palette, compact) {
+  const { bold, mint, muted, reset, white } = palette;
+  const hints = bindings
+    .filter((binding) => binding.hint && !(compact && binding.wideOnly))
+    .map((binding) => {
+      const hint = compact ? binding.compactHint || binding.hint : binding.hint;
+      return `${binding.accent ? mint : white}${bold}${hint}${reset}${muted} ${binding.label}`;
+    });
+  return `${hints.join("  ")}${reset}`;
+}
+
+/**
+ * The theme catalog, windowed to the rows it was given so it can never grow into
+ * the footer as the deck gains themes.
+ */
+function catalogPanel({ themes, themeIndex, active, palette, width, height, compact }) {
+  const { bold, cyan, dim, gold, mint, muted, reset, white } = palette;
+  const entries = [];
+  for (const category of ["core", "special"]) {
+    const members = themes.filter((item) => item.category === category);
+    if (members.length === 0) continue;
+    entries.push({ kind: "category", category });
+    for (const theme of members) entries.push({ kind: "theme", theme, index: themes.indexOf(theme) });
+  }
+
+  const selected = entries.findIndex((entry) => entry.kind === "theme" && entry.index === themeIndex);
+  const view = windowList(entries.length, Math.max(0, selected), height);
+  const swatches = compact ? 2 : 3;
+  const nameWidth = Math.max(6, width - 5 - swatches * 2);
+
+  const rows = entries.slice(view.start, view.end).map((entry) => {
+    if (entry.kind === "category") {
+      const special = entry.category === "special";
+      return `${special ? gold : muted}${bold}${special ? "◆ SPECIAL EDITIONS" : "CORE COLLECTION"}${reset}`;
+    }
+    const current = entry.index === themeIndex;
+    const activeMark = entry.theme.slug === active?.theme ? `${mint}●${reset}` : " ";
+    const marker = current ? `${cyan}▶${reset}` : " ";
+    const colors = entry.theme.palette.slice(8, 8 + swatches).map((color) => palette.swatch(color, 2)).join("");
+    return `${marker} ${activeMark} ${colors} ${current ? bold + white : muted}${pad(entry.theme.name, nameWidth)}${reset}`;
+  });
+
+  if (view.scrolls) {
+    const hidden = [view.start > 0 ? `▴ ${view.start} above` : null, entries.length - view.end > 0 ? `▾ ${entries.length - view.end} below` : null];
+    rows.push(`${dim}${hidden.filter(Boolean).join(" · ")}${reset}`);
+  }
+  return rows;
+}
+
+function detailPanel({ theme, profile, profileName, palette, width, compact }) {
+  const { bold, cyan, dim, gold, muted, reset, white } = palette;
+  const special = theme.category === "special";
+  const swatchWidth = compact ? 3 : 5;
+  return [
+    `${bold}${palette.fg(theme.cursor)}${crop(theme.name.toUpperCase(), width)}${reset}`,
+    `${muted}${crop(theme.description, width)}${reset}`,
+    `${special ? gold : cyan}${special ? "◆ SPECIAL EDITION" : "CORE THEME"}${reset}  ${dim}theme v${theme.version}${reset}`,
+    theme.palette.slice(0, 8).map((color) => palette.swatch(color, swatchWidth)).join(" "),
+    theme.palette.slice(8).map((color) => palette.swatch(color, swatchWidth)).join(" "),
+    "",
+    `${dim}BACKGROUND${reset} ${palette.swatch(theme.background, 8)}  ${dim}TEXT${reset} ${palette.swatch(theme.foreground, 8)}  ${dim}CURSOR${reset} ${palette.swatch(theme.cursor, 8)}`,
+    "",
+    `${bold}${white}TERMINAL PROFILE${reset}  ${cyan}${profileName.toUpperCase()}${reset}  ${muted}← → change${reset}`,
+    `${white}${crop(profile.label, width)}${reset}`,
+    `${dim}${crop(profileEffects(profile), width)}${reset}`,
+    "",
+    theme.wallpaper ? `${gold}◆ Wallpaper included${reset}  ${dim}Ghostty · WezTerm · Kitty · iTerm2 · Terminal · Warp${reset}` : "",
+  ];
+}
+
+function helpPanel(palette, width) {
+  const { bold, cyan, dim, muted, panel, reset, white } = palette;
+  const guides = bindings.filter((binding) => binding.guide);
+  const keyWidth = Math.max(...guides.map((binding) => displayWidth(binding.guide)));
+  const inner = Math.min(60, Math.max(32, width - 10));
+  const edge = (left, right) => `${panel}${muted}${left}${"─".repeat(inner)}${right}${reset}`;
+  const body = (value, style = white) => `${panel}${muted}│${style}${pad(value, inner)}${muted}│${reset}`;
+  return [
+    edge("╭", "╮"),
+    body(" TERMDECK KEYS", `${cyan}${bold}`),
+    body(""),
+    ...guides.map((binding) => body(` ${pad(binding.guide, keyWidth)}   ${binding.detail}`)),
+    body(""),
+    body(" Press ? to return", dim),
+    edge("╰", "╯"),
+  ];
+}
+
+/**
+ * Builds the whole screen as an array of rows, one per terminal line. Panels are
+ * pure functions of the state, and the frame decides where they go, so a small
+ * terminal drops content instead of drawing over the controls.
+ */
+export function buildFrame({ themes, themeIndex, profileIndex, active, message, help = false, columns = 100, rows = 30, depth = 24 }) {
   const palette = createPalette(depth);
-  const { bold, dim, reset, cyan, mint, gold, muted, white, panel } = palette;
-  const swatch = (hex, width) => palette.swatch(hex, width);
+  const { bold, dim, gold, mint, muted, reset, white } = palette;
   const width = Math.max(64, columns);
   const height = Math.max(20, rows);
   const compact = width < 88 || height < 26;
   const theme = themes[themeIndex];
   const profileName = Object.keys(profiles)[profileIndex];
   const profile = profiles[profileName];
+
+  const margin = 3;
+  const gutter = 2;
   const leftWidth = compact ? 24 : 31;
   const rightColumn = leftWidth + 5;
-  const rightWidth = Math.max(30, width - rightColumn - 2);
-  const lines = [`${controls.clearScreen}${move(1)}${controls.hideCursor}`];
-  const write = (row, column, value) => lines.push(`${move(row, column)}${value}`);
+  const leftPanelWidth = rightColumn - margin - gutter;
+  const rightPanelWidth = Math.max(30, width - rightColumn - 2);
 
-  logo(palette, compact).forEach((line, index) => write(2 + index, 3, line));
-  const top = compact ? 4 : 6;
-  write(top - 1, 3, `${dim}${crop(`github.com/iCosiSenpai/termdeck  •  github.com/iCosiSenpai  •  release v${packageMetadata.version}`, width - 6)}${reset}`);
-  write(top, 3, `${muted}${"─".repeat(Math.max(20, width - 6))}${reset}`);
-  write(top + 1, 3, `${bold}${white}THEMES${reset}`);
-  write(top + 1, rightColumn, `${bold}${white}LIVE PREVIEW${reset}`);
+  const logoLines = logo(palette, compact);
+  const linksRow = 2 + logoLines.length;
+  const ruleRow = linksRow + 1;
+  const titlesRow = ruleRow + 1;
+  const bodyTop = titlesRow + 1;
+  const profileRow = height - 5;
+  const keysRow = height - 3;
+  const statusRow = height - 2;
+  const bodyHeight = Math.max(1, profileRow - bodyTop);
 
-  let catalogRow = top + 2;
-  for (const category of ["core", "special"]) {
-    const categoryThemes = themes.filter((item) => item.category === category);
-    if (categoryThemes.length === 0) continue;
-    write(catalogRow, 3, `${category === "special" ? gold : muted}${bold}${category === "special" ? "◆ SPECIAL EDITIONS" : "CORE COLLECTION"}${reset}`);
-    catalogRow += 1;
-    for (const item of categoryThemes) {
-      const index = themes.indexOf(item);
-      const selected = index === themeIndex;
-      const activeMark = item.slug === active?.theme ? `${mint}●${reset}` : " ";
-      const marker = selected ? `${cyan}▶${reset}` : " ";
-      const colors = item.palette.slice(8, 11).map((color) => swatch(color, 2)).join("");
-      write(catalogRow, 3, `${marker} ${activeMark} ${colors} ${selected ? bold + white : muted}${pad(item.name, leftWidth - 15)}${reset}`);
-      catalogRow += 1;
-    }
+  const frame = new Array(height).fill("");
+  const set = (row, segments) => {
+    if (row >= 1 && row <= height) frame[row - 1] = composeRow(width, segments);
+  };
+
+  logoLines.forEach((line, index) => set(2 + index, [{ column: margin, value: line }]));
+  set(linksRow, [{ column: margin, value: `${dim}${crop(`${REPOSITORY}  •  ${AUTHOR}  •  release v${packageMetadata.version}`, width - 6)}${reset}` }]);
+  set(ruleRow, [{ column: margin, value: `${muted}${"─".repeat(Math.max(20, width - 6))}${reset}` }]);
+  set(titlesRow, [
+    { column: margin, value: `${bold}${white}THEMES${reset}` },
+    { column: rightColumn, value: `${bold}${white}LIVE PREVIEW${reset}` },
+  ]);
+
+  const catalogRows = catalogPanel({ themes, themeIndex, active, palette, width: leftPanelWidth, height: bodyHeight, compact });
+  const detailRows = detailPanel({ theme, profile, profileName, palette, width: rightPanelWidth, compact });
+  for (let index = 0; index < bodyHeight; index += 1) {
+    const segments = [];
+    if (catalogRows[index]) segments.push({ column: margin, value: catalogRows[index] });
+    if (detailRows[index]) segments.push({ column: rightColumn, value: detailRows[index] });
+    if (segments.length > 0) set(bodyTop + index, segments);
   }
 
-  const detailTop = top + 3;
-  write(detailTop, rightColumn, `${bold}${palette.fg(theme.cursor)}${crop(theme.name.toUpperCase(), rightWidth)}${reset}`);
-  write(detailTop + 1, rightColumn, `${muted}${crop(theme.description, rightWidth)}${reset}`);
-  write(detailTop + 2, rightColumn, `${theme.category === "special" ? gold : cyan}${theme.category === "special" ? "◆ SPECIAL EDITION" : "CORE THEME"}${reset}  ${dim}theme v${theme.version}${reset}`);
-  write(detailTop + 3, rightColumn, theme.palette.slice(0, 8).map((color) => swatch(color, compact ? 3 : 5)).join(" "));
-  write(detailTop + 4, rightColumn, theme.palette.slice(8).map((color) => swatch(color, compact ? 3 : 5)).join(" "));
-  write(detailTop + 6, rightColumn, `${dim}BACKGROUND${reset} ${swatch(theme.background, 8)}  ${dim}TEXT${reset} ${swatch(theme.foreground, 8)}  ${dim}CURSOR${reset} ${swatch(theme.cursor, 8)}`);
-  const footer = height - 5;
-  if (detailTop + 8 < footer) write(detailTop + 8, rightColumn, `${bold}${white}TERMINAL PROFILE${reset}  ${cyan}${profileName.toUpperCase()}${reset}  ${muted}← → change${reset}`);
-  if (detailTop + 9 < footer) write(detailTop + 9, rightColumn, `${white}${crop(profile.label, rightWidth)}${reset}`);
-  if (detailTop + 10 < footer) write(detailTop + 10, rightColumn, `${dim}${crop(profileEffects(profile), rightWidth)}${reset}`);
-  if (theme.wallpaper && detailTop + 12 < footer) write(detailTop + 12, rightColumn, `${gold}◆ Wallpaper included${reset}  ${dim}Ghostty · WezTerm · Kitty · iTerm2 · Terminal · Warp${reset}`);
-
-  write(footer, 3, profileBar(palette, profileIndex, width - 6));
-  const keys = compact
-    ? `${white}${bold}↑↓${reset}${muted} theme  ${white}${bold}←→${reset}${muted} profile  ${mint}${bold}ENTER${reset}${muted} apply  ${white}${bold}X${reset}${muted} export  ${white}${bold}?${reset}${muted} help  ${white}${bold}Q${reset}${muted} quit${reset}`
-    : `${white}${bold}↑↓${reset}${muted} theme  ${white}${bold}←→ / 1–4${reset}${muted} profile  ${mint}${bold}ENTER${reset}${muted} apply  ${white}${bold}X${reset}${muted} export  ${white}${bold}R${reset}${muted} random  ${white}${bold}?${reset}${muted} help  ${white}${bold}Q${reset}${muted} quit${reset}`;
-  write(footer + 2, 3, keys);
-  if (message) write(footer + 3, 3, `${message.startsWith("✓") ? mint : gold}${crop(message, width - 6)}${reset}`);
-  else write(footer + 3, 3, `${dim}Selected: ${theme.slug} · ${profileName}${active ? `  |  Active: ${active.theme} · ${active.profile}` : ""}${reset}`);
+  set(profileRow, [{ column: margin, value: profileBar(palette, profileIndex, width - 6) }]);
+  set(keysRow, [{ column: margin, value: keyHints(palette, compact) }]);
+  set(statusRow, [{
+    column: margin,
+    value: message
+      ? `${message.startsWith("✓") ? mint : gold}${crop(message, width - 6)}${reset}`
+      : `${dim}Selected: ${theme.slug} · ${profileName}${active ? `  |  Active: ${active.theme} · ${active.profile}` : ""}${reset}`,
+  }]);
 
   if (help) {
-    const boxWidth = Math.min(62, width - 8);
-    const boxColumn = Math.floor((width - boxWidth) / 2);
-    const boxTop = Math.max(3, Math.floor((height - 12) / 2));
-    const helpLines = [
-      " TERMDECK KEYS",
-      "",
-      " ↑ / ↓ or J / K     browse themes",
-      " ← / → or H / L     change terminal profile",
-      " 1–4                 select profile directly",
-      " Enter               apply selection to Ghostty",
-      " X                   export theme for every terminal",
-      " R                   pick a random theme",
-      " Q / Esc             close control center",
-      "",
-      " Press ? to return",
-    ];
-    helpLines.forEach((line, index) => write(boxTop + index, boxColumn, `${panel}${index === 0 ? cyan + bold : white}${pad(line, boxWidth)}${reset}`));
+    const box = helpPanel(palette, width);
+    const boxColumn = Math.max(1, Math.floor((width - displayWidth(box[0])) / 2) + 1);
+    const boxTop = Math.max(1, Math.floor((height - box.length) / 2) + 1);
+    box.forEach((line, index) => set(boxTop + index, [{ column: boxColumn, value: line }]));
   }
-  return lines.join("");
+
+  return { rows: frame, width, height };
+}
+
+/** The complete frame as a single positioned string, used for the first paint. */
+export function renderDashboard(state) {
+  const { rows } = buildFrame(state);
+  const painted = rows.map((row, index) => (row ? `${move(index + 1, 1)}${row}` : "")).join("");
+  return `${controls.clearScreen}${controls.hideCursor}${painted}`;
 }
 
 function exportEverywhere(theme, profileName) {
