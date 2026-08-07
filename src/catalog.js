@@ -7,14 +7,16 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const projectRoot = ROOT;
 export const packageMetadata = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
 
-export function loadThemes() {
-  return fs
+let catalog = null;
+
+function readCatalog() {
+  const themes = fs
     .readdirSync(path.join(ROOT, "themes"))
     .filter((file) => file.endsWith(".json"))
     .map((file) => {
       const theme = JSON.parse(fs.readFileSync(path.join(ROOT, "themes", file), "utf8"));
       validateTheme(theme, file);
-      return theme;
+      return Object.freeze(theme);
     })
     .sort((left, right) => {
       const categories = { core: 0, special: 1 };
@@ -22,6 +24,16 @@ export function loadThemes() {
         || (left.order ?? 999) - (right.order ?? 999)
         || left.name.localeCompare(right.name);
     });
+  return Object.freeze(themes);
+}
+
+/**
+ * Reads, validates, and orders the theme catalog once per process. The result is
+ * frozen and shared, so repeated lookups never re-parse the theme files.
+ */
+export function loadThemes() {
+  if (!catalog) catalog = readCatalog();
+  return catalog;
 }
 
 export function getTheme(slug) {

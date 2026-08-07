@@ -17,6 +17,7 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 - Added the original Termdeck stacked-terminal icon, a transparent GitHub asset, and a universal Unicode mark in the Control Center header.
 - Established granitic commit rules for durable, atomic checkpoints and release isolation.
 - Made artwork provenance mandatory catalog metadata and added an automatically verified wallpaper notice for future themes.
+- Parsed and validated the theme catalog once per process and shared it as immutable data instead of re-reading every theme file on each lookup.
 
 ### Theme releases
 

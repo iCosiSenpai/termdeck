@@ -27,3 +27,11 @@ test("Special Editions require property attribution", () => {
 test("unknown themes produce a useful error", () => {
   assert.throws(() => getTheme("lost-signal"), /termdeck list/);
 });
+
+test("the catalog is parsed once and shared as immutable data", () => {
+  const first = loadThemes();
+  assert.equal(first, loadThemes(), "repeated loads must reuse the parsed catalog");
+  assert.ok(Object.isFrozen(first));
+  assert.equal(getTheme("carbon-mono"), first.find((theme) => theme.slug === "carbon-mono"));
+  assert.throws(() => { first[0].name = "mutated"; }, TypeError);
+});
