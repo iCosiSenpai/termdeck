@@ -2,7 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { getTheme, loadThemes, packageMetadata } from "./catalog.js";
-import { defaultOutput, exportTheme, targets } from "./exporters.js";
+import { defaultOutput, targets } from "./exporters.js";
+import { writeThemeExport } from "./export-package.js";
+import { capabilityLabels, terminalCapabilities } from "./capabilities.js";
 import { applyGhostty, readState, resolvePaths, uninstallGhostty } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
 import { openDashboard } from "./dashboard.js";
@@ -26,7 +28,8 @@ Usage:
   termdeck apply <theme> [--profile cozy|focus|glass|presentation] [--font NAME]
   termdeck cycle [--profile NAME]
   termdeck random [--profile NAME]
-  termdeck export <theme> --target ${targets.join("|")} [--output PATH]
+  termdeck export <theme> --target ${targets.join("|")} [--profile NAME] [--output PATH]
+  termdeck capabilities
   termdeck profiles
   termdeck status
   termdeck version
@@ -36,7 +39,7 @@ Usage:
 Examples:
   termdeck apply tokyo-midnight --profile glass
   termdeck apply resonant-rover --profile cozy --font "JetBrainsMono Nerd Font"
-  termdeck export nordic-aurora --target iterm2`);
+  termdeck export nordic-aurora --target wezterm --profile glass`);
 }
 
 function parseOptions(args) {
@@ -133,6 +136,17 @@ export async function run(argv) {
     case "profiles":
       for (const [name, profile] of Object.entries(profiles)) console.log(`  ${c.bold}${name.padEnd(14)}${c.reset} ${profile.label}`);
       break;
+    case "capabilities":
+      console.log(`${c.bold}Terminal capability matrix${c.reset}\n`);
+      for (const target of targets) {
+        const item = terminalCapabilities[target];
+        const features = ["wallpaper", "opacity", "blur", "padding", "cursor", "decorations", "panes"]
+          .map((feature) => `${item[feature] ? c.green + "✓" : c.dim + "—"}${c.reset} ${feature}`)
+          .join("  ");
+        console.log(`${c.bold}${item.name.padEnd(16)}${c.reset} ${capabilityLabels[item.level]} · ${item.format}\n  ${features}`);
+        if (item.note) console.log(`  ${c.dim}${item.note}${c.reset}`);
+      }
+      break;
     case "apply": apply(positional[0], options); break;
     case "cycle": {
       const themes = loadThemes();
@@ -152,10 +166,12 @@ export async function run(argv) {
       const theme = getTheme(positional[0]);
       const target = optionValue(options, "target", null);
       if (!target) throw new Error(`--target is required. Choose: ${targets.join(", ")}.`);
+      if (!targets.includes(target)) throw new Error(`Unknown target "${target}". Choose: ${targets.join(", ")}.`);
       const output = path.resolve(optionValue(options, "output", defaultOutput(theme, target)));
-      fs.mkdirSync(path.dirname(output), { recursive: true });
-      fs.writeFileSync(output, exportTheme(theme, target));
-      console.log(`${c.green}✓${c.reset} Exported ${theme.name} for ${target}: ${output}`);
+      const profileName = optionValue(options, "profile", "cozy");
+      const result = writeThemeExport({ theme, target, output, profileName });
+      console.log(`${c.green}✓${c.reset} Exported ${theme.name} for ${terminalCapabilities[target].name} (${capabilityLabels[terminalCapabilities[target].level]}): ${result.output}`);
+      console.log(`${c.dim}${result.wallpaperFile ? `Wallpaper: ${result.wallpaperFile} · ` : ""}profile: ${profileName}${c.reset}`);
       break;
     }
     case "status": {

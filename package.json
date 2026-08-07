@@ -19,7 +19,9 @@
     "iterm2",
     "kitty",
     "wezterm",
-    "alacritty"
+    "alacritty",
+    "warp",
+    "macos-terminal"
   ],
   "author": "Alessio Cosi",
   "license": "MIT",

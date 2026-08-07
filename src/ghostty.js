@@ -78,7 +78,7 @@ export function applyGhostty({ theme, profile, profileName, font, env = process.
   fs.mkdirSync(paths.assetDir, { recursive: true });
 
   const themeFile = path.join(paths.themeDir, theme.slug);
-  fs.writeFileSync(themeFile, ghostty(theme));
+  fs.writeFileSync(themeFile, ghostty(theme, { full: false }));
   let wallpaperFile = null;
   if (theme.wallpaper) {
     const source = path.join(projectRoot, theme.wallpaper);

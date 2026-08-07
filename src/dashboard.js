@@ -1,8 +1,7 @@
-import fs from "node:fs";
-import path from "node:path";
 import readline from "node:readline";
 import { loadThemes, packageMetadata } from "./catalog.js";
-import { defaultOutput, exportTheme, targets } from "./exporters.js";
+import { defaultOutput, targets } from "./exporters.js";
+import { writeThemeExport } from "./export-package.js";
 import { applyGhostty, readState } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
 
@@ -104,7 +103,7 @@ export function renderDashboard({ themes, themeIndex, profileIndex, active, mess
   const footer = height - 5;
   if (detailTop + 8 < footer) write(detailTop + 8, rightColumn, `${rgb(theme.palette[6])}const${reset} deck = ${rgb(theme.palette[3])}"${theme.slug}"${reset};`);
   if (detailTop + 9 < footer) write(detailTop + 9, rightColumn, `${rgb(theme.palette[2])}termdeck${reset} ${muted}›${reset} ready to make the terminal yours`);
-  if (theme.wallpaper && detailTop + 11 < footer) write(detailTop + 11, rightColumn, `${gold}◆ Wallpaper included${reset}  ${dim}Ghostty 1.2+${reset}`);
+  if (theme.wallpaper && detailTop + 11 < footer) write(detailTop + 11, rightColumn, `${gold}◆ Wallpaper included${reset}  ${dim}Ghostty · WezTerm · Kitty · iTerm2 · Terminal · Warp${reset}`);
 
   write(footer, 3, profileBar(profileIndex, width - 6));
   const keys = compact
@@ -136,11 +135,10 @@ export function renderDashboard({ themes, themeIndex, profileIndex, active, mess
   return lines.join("");
 }
 
-function exportEverywhere(theme) {
+function exportEverywhere(theme, profileName) {
   for (const target of targets) {
     const output = defaultOutput(theme, target);
-    fs.mkdirSync(path.dirname(output), { recursive: true });
-    fs.writeFileSync(output, exportTheme(theme, target));
+    writeThemeExport({ theme, target, output, profileName });
   }
 }
 
@@ -182,7 +180,7 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
       else if (/^[1-4]$/.test(value)) profileIndex = Number(value) - 1;
       else if (key.name === "r") themeIndex = Math.floor(Math.random() * themes.length);
       else if (key.name === "x") {
-        exportEverywhere(themes[themeIndex]);
+        exportEverywhere(themes[themeIndex], names[profileIndex]);
         message = `✓ Exported ${themes[themeIndex].name} to dist/ for ${targets.length} terminals`;
       } else if (key.name === "return") {
         const theme = themes[themeIndex];
