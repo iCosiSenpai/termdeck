@@ -105,25 +105,99 @@ function catalogPanel({ themes, themeIndex, active, palette, width, height, comp
   return rows;
 }
 
-function detailPanel({ theme, profile, profileName, palette, width, compact }) {
+/**
+ * A miniature terminal window painted with the theme's own colours: the pane is
+ * the theme background, the text is its foreground, the block is its cursor. The
+ * palette is judged in context instead of as a row of swatches.
+ *
+ * `rows` includes both borders and must be 5, 7, or 9. Lines are tagged with the
+ * smallest window that shows them, so every size stays a coherent snippet.
+ */
+function previewPanel({ theme, palette, profileName, width, rows }) {
+  const background = palette.bg(theme.background);
+  const border = palette.fg(theme.palette[8]);
+  const text = palette.fg(theme.foreground);
+  const key = palette.fg(theme.palette[4]);
+  const value = palette.fg(theme.palette[3]);
+  const accent = palette.fg(theme.palette[6]);
+  const ok = palette.fg(theme.palette[2]);
+  const inner = Math.max(4, width - 4);
+  const line = (...parts) => `${background}${border}│ ${pad(parts.join(""), inner)}${border} │${palette.reset}`;
+  const setting = (name, shown) => line(`${key}${name} ${border}= ${shown}`);
+
+  const title = ` ${theme.slug} `;
+  const script = [
+    [1, line(`${palette.fg(theme.cursor)}❯ ${text}termdeck apply ${value}${theme.slug}`)],
+    [3, line("")],
+    [1, setting("theme", `${value}${theme.slug}`)],
+    [2, setting("background", `${accent}${theme.background}`)],
+    [3, setting("foreground", `${accent}${theme.foreground}`)],
+    [2, setting("profile", `${value}${profileName}`)],
+    [1, line(`${ok}✓ palette applied  ${palette.fg(theme.cursor)}❯ ${palette.bg(theme.cursor)} ${background}`)],
+  ];
+  const threshold = (rows - 3) / 2;
+
+  return [
+    `${background}${border}╭─${palette.fg(theme.palette[14])}${title}${border}${"─".repeat(Math.max(0, width - 3 - displayWidth(title)))}╮${palette.reset}`,
+    ...script.filter(([priority]) => priority <= threshold).map(([, row]) => row),
+    `${background}${border}╰${"─".repeat(Math.max(0, width - 2))}╯${palette.reset}`,
+  ];
+}
+
+/** The palette in one row: sixteen ANSI slots, normal group then bright group. */
+function paletteStrip(theme, palette, width) {
+  const cell = width >= 60 ? 3 : 2;
+  const group = (colors) => colors.map((color) => palette.swatch(color, cell)).join("");
+  return `${group(theme.palette.slice(0, 8))} ${group(theme.palette.slice(8))}`;
+}
+
+function swatchRows(theme, palette, compact) {
+  const cell = compact ? 3 : 5;
+  return [
+    theme.palette.slice(0, 8).map((color) => palette.swatch(color, cell)).join(" "),
+    theme.palette.slice(8).map((color) => palette.swatch(color, cell)).join(" "),
+    `${palette.dim}BACKGROUND${palette.reset} ${palette.swatch(theme.background, 8)}  ${palette.dim}TEXT${palette.reset} ${palette.swatch(theme.foreground, 8)}  ${palette.dim}CURSOR${palette.reset} ${palette.swatch(theme.cursor, 8)}`,
+  ];
+}
+
+/**
+ * Shows the live window when the terminal can render it and the pane has room,
+ * and falls back to plain swatches otherwise.
+ */
+function showcase({ theme, palette, profileName, width, budget, compact }) {
+  if (palette.depth >= 8 && width >= 30 && budget >= 5) {
+    const rows = budget >= 9 ? 9 : budget >= 7 ? 7 : 5;
+    return previewPanel({ theme, palette, profileName, width: Math.min(width, 60), rows });
+  }
+  if (budget >= 3) return swatchRows(theme, palette, compact);
+  return [];
+}
+
+function detailPanel({ theme, profile, profileName, palette, width, height, compact }) {
   const { bold, cyan, dim, gold, muted, reset, white } = palette;
   const special = theme.category === "special";
-  const swatchWidth = compact ? 3 : 5;
-  return [
+  const header = [
     `${bold}${palette.fg(theme.cursor)}${crop(theme.name.toUpperCase(), width)}${reset}`,
     `${muted}${crop(theme.description, width)}${reset}`,
     `${special ? gold : cyan}${special ? "◆ SPECIAL EDITION" : "CORE THEME"}${reset}  ${dim}theme v${theme.version}${reset}`,
-    theme.palette.slice(0, 8).map((color) => palette.swatch(color, swatchWidth)).join(" "),
-    theme.palette.slice(8).map((color) => palette.swatch(color, swatchWidth)).join(" "),
-    "",
-    `${dim}BACKGROUND${reset} ${palette.swatch(theme.background, 8)}  ${dim}TEXT${reset} ${palette.swatch(theme.foreground, 8)}  ${dim}CURSOR${reset} ${palette.swatch(theme.cursor, 8)}`,
-    "",
+    ...(palette.colored ? [paletteStrip(theme, palette, width)] : []),
+  ];
+  const profileBlock = [
     `${bold}${white}TERMINAL PROFILE${reset}  ${cyan}${profileName.toUpperCase()}${reset}  ${muted}← → change${reset}`,
     `${white}${crop(profile.label, width)}${reset}`,
     `${dim}${crop(profileEffects(profile), width)}${reset}`,
-    "",
-    theme.wallpaper ? `${gold}◆ Wallpaper included${reset}  ${dim}Ghostty · WezTerm · Kitty · iTerm2 · Terminal · Warp${reset}` : "",
   ];
+  const wallpaper = theme.wallpaper
+    ? ["", `${gold}◆ Wallpaper included${reset}  ${dim}Ghostty · WezTerm · Kitty · iTerm2 · Terminal · Warp${reset}`]
+    : [];
+
+  // The selection and its profile always win; the showcase and the wallpaper
+  // note give up their rows first when the terminal is short.
+  const budget = height - header.length - 1 - profileBlock.length;
+  const note = budget - wallpaper.length >= 5 ? wallpaper : [];
+  const body = showcase({ theme, palette, profileName, width, budget: budget - note.length, compact });
+
+  return [...header, ...body, "", ...profileBlock, ...note];
 }
 
 function helpPanel(palette, width) {
@@ -190,7 +264,7 @@ export function buildFrame({ themes, themeIndex, profileIndex, active, message, 
   ]);
 
   const catalogRows = catalogPanel({ themes, themeIndex, active, palette, width: leftPanelWidth, height: bodyHeight, compact });
-  const detailRows = detailPanel({ theme, profile, profileName, palette, width: rightPanelWidth, compact });
+  const detailRows = detailPanel({ theme, profile, profileName, palette, width: rightPanelWidth, height: bodyHeight, compact });
   for (let index = 0; index < bodyHeight; index += 1) {
     const segments = [];
     if (catalogRows[index]) segments.push({ column: margin, value: catalogRows[index] });

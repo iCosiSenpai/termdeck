@@ -117,6 +117,40 @@ function fakeTerminal() {
   return { input, output };
 }
 
+test("the live preview is a terminal window painted in the theme's own colours", () => {
+  const themes = loadThemes();
+  const theme = themes[2];
+  const background = (hex) => `\u001b[48;2;${[1, 3, 5].map((index) => Number.parseInt(hex.slice(index, index + 2), 16)).join(";")}m`;
+  const frame = buildFrame({ themes, themeIndex: 2, profileIndex: 2, columns: 120, rows: 32 });
+  const plain = stripAnsi(frame.rows.join("\n"));
+
+  assert.equal(theme.slug, "tokyo-midnight");
+  assert.match(plain, /╭─ tokyo-midnight ─+╮/, "the preview is framed and titled with the theme");
+  assert.match(plain, /❯ termdeck apply tokyo-midnight/);
+  assert.match(plain, /theme = tokyo-midnight/);
+  assert.match(plain, new RegExp(`background = ${theme.background}`));
+  assert.match(plain, /profile = glass/, "the preview follows the selected profile");
+  assert.match(plain, /✓ palette applied/);
+
+  const pane = frame.rows.find((row) => stripAnsi(row).includes("theme = tokyo-midnight"));
+  assert.ok(pane.includes(background(theme.background)), "the pane is filled with the theme background");
+  const status = frame.rows.find((row) => stripAnsi(row).includes("✓ palette applied"));
+  assert.ok(status.includes(background(theme.cursor)), "the block cursor is painted with the theme cursor colour");
+});
+
+test("the live preview shrinks with the pane and gives way to swatches", () => {
+  const themes = loadThemes();
+  const paneRows = (columns, rows, depth = 24) => stripAnsi(buildFrame({ themes, themeIndex: 2, profileIndex: 0, columns, rows, depth }).rows.join("\n"));
+
+  assert.match(paneRows(120, 32), /foreground = /, "the tallest pane shows the full listing");
+  assert.doesNotMatch(paneRows(88, 26), /foreground = /, "a shorter pane drops the optional lines");
+  assert.match(paneRows(88, 26), /❯ termdeck apply/, "but keeps the window itself");
+  assert.doesNotMatch(paneRows(70, 22), /╭─ /, "a short terminal falls back to swatches");
+  assert.match(paneRows(70, 22), /BACKGROUND/);
+  assert.doesNotMatch(paneRows(120, 32, 1), /╭─ tokyo/, "a terminal without real colour falls back to swatches");
+  assert.match(paneRows(120, 32, 1), /BACKGROUND/);
+});
+
 test("Escape restores the terminal and releases stdin", async () => {
   const { input, output } = fakeTerminal();
 

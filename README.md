@@ -57,6 +57,8 @@ The **Terminal Profile** is the behavior layer applied on top of the selected th
 
 The dashboard displays the Termdeck release, selected theme version, active setup, project repository, and author profile. Themes are previewed without touching Ghostty until you press <kbd>Enter</kbd>.
 
+The **Live Preview** pane draws a miniature terminal window using the selected theme's own background, foreground, cursor, and ANSI palette, so a theme is judged in context rather than as a row of colour chips. The pane adapts to the space available and falls back to palette swatches on small terminals or where the terminal cannot render real colour.
+
 ### Four profiles, every palette
 
 | Profile | Designed for | Behavior |
