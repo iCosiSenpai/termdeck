@@ -146,3 +146,37 @@ test("navigating repaints changed rows instead of clearing the screen", async ()
   input.emit("keypress", "\u001b", { name: "escape" });
   await closed;
 });
+
+test("a terminating signal leaves the terminal usable", async () => {
+  const previousExitCode = process.exitCode;
+  const { input, output } = fakeTerminal();
+  const closed = openDashboard({ input, output });
+  output.flush();
+
+  process.emit("SIGTERM");
+  await closed;
+
+  assert.equal(process.exitCode, 143, "the shell must see the conventional signal exit code");
+  process.exitCode = previousExitCode;
+
+  assert.match(output.flush(), /\u001b\[\?25h\u001b\[\?1049l/, "the cursor and the main screen are restored");
+  assert.equal(input.rawMode, false);
+  assert.equal(input.listenerCount("keypress"), 0);
+  assert.equal(process.listenerCount("SIGTERM"), 0);
+  assert.equal(process.listenerCount("SIGHUP"), 0);
+});
+
+test("a failing repaint restores the terminal and surfaces the error", async () => {
+  const { input, output } = fakeTerminal();
+  const closed = openDashboard({ input, output });
+  output.write = () => { throw new Error("broken pipe"); };
+
+  input.emit("keypress", "j", { name: "down" });
+
+  await assert.rejects(closed, /broken pipe/);
+  assert.equal(input.rawMode, false, "raw mode must be released even when writing fails");
+  assert.equal(input.paused, true);
+  assert.equal(input.listenerCount("keypress"), 0);
+  assert.equal(output.listenerCount("resize"), 0);
+  assert.equal(process.listenerCount("SIGTERM"), 0);
+});

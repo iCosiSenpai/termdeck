@@ -224,6 +224,18 @@ function exportEverywhere(theme, profileName) {
   }
 }
 
+/** Exit codes a shell expects after each terminating signal. */
+const SIGNAL_EXITS = { SIGHUP: 129, SIGINT: 130, SIGTERM: 143 };
+
+/** Last-resort cleanup: if the terminal is already gone there is nothing better to do. */
+function attempt(action) {
+  try {
+    action();
+  } catch {
+    // ignored on purpose
+  }
+}
+
 export function openDashboard({ input = process.stdin, output = process.stdout } = {}) {
   const themes = loadThemes();
   const names = Object.keys(profiles);
@@ -235,53 +247,106 @@ export function openDashboard({ input = process.stdin, output = process.stdout }
 
   if (!input.isTTY || !output.isTTY) throw new Error("The control center needs an interactive terminal. Use \"termdeck help\" for command mode.");
   const depth = detectDepth({ stream: output });
-  const render = () => screen.paint(buildFrame({ themes, themeIndex, profileIndex, active, message, help: showingHelp, columns: output.columns, rows: output.rows, depth }).rows);
-  const screen = createScreen({ output, redraw: render });
 
-  readline.emitKeypressEvents(input);
-  input.setRawMode(true);
-  input.resume();
-  screen.open();
-  render();
+  return new Promise((resolve, reject) => {
+    const screen = createScreen({ output, redraw: () => draw() });
+    const signalHandlers = new Map();
+    let restored = false;
+    let settled = false;
 
-  return new Promise((resolve) => {
-    const cleanup = () => {
+    /** Puts the terminal back the way we found it. Safe to call more than once. */
+    function restore() {
+      if (restored) return;
+      restored = true;
+      attempt(() => input.setRawMode(false));
+      attempt(() => input.pause());
+      attempt(() => screen.close());
+    }
+
+    function detach() {
       input.off("keypress", onKey);
-      input.setRawMode(false);
-      input.pause();
-      screen.close();
+      for (const [signal, handler] of signalHandlers) process.off(signal, handler);
+      signalHandlers.clear();
+      process.off("exit", restore);
+    }
+
+    function close() {
+      if (settled) return;
+      settled = true;
+      detach();
+      restore();
       resolve();
-    };
-    const onKey = (value, key = {}) => {
-      if ((key.ctrl && key.name === "c") || key.name === "q" || key.name === "escape") return cleanup();
-      if (key.name === "?" || value === "?") { showingHelp = !showingHelp; render(); return; }
-      if (showingHelp) return;
-      message = "";
-      if (key.name === "up" || key.name === "k") themeIndex = (themeIndex - 1 + themes.length) % themes.length;
-      else if (key.name === "down" || key.name === "j") themeIndex = (themeIndex + 1) % themes.length;
-      else if (key.name === "left" || key.name === "h") profileIndex = (profileIndex - 1 + names.length) % names.length;
-      else if (key.name === "right" || key.name === "l") profileIndex = (profileIndex + 1) % names.length;
-      else if (/^[1-4]$/.test(value)) profileIndex = Number(value) - 1;
-      else if (key.name === "r") themeIndex = Math.floor(Math.random() * themes.length);
-      else if (key.name === "x") {
-        exportEverywhere(themes[themeIndex], names[profileIndex]);
-        message = `✓ Exported ${themes[themeIndex].name} to dist/ for ${targets.length} terminals`;
-      } else if (key.name === "return") {
-        const theme = themes[themeIndex];
-        const profileName = names[profileIndex];
-        try {
-          applyGhostty({ theme, profile: getProfile(profileName), profileName, font: active?.font || null });
-          const reload = reloadGhostty();
-          active = readState();
-          message = reload.reloaded
-            ? `✓ ${theme.name} + ${profileName} applied — Ghostty reloaded`
-            : `✓ Applied — press ⌘⇧, to reload Ghostty (${reload.reason})`;
-        } catch (error) {
-          message = `! ${error.message}`;
-        }
+    }
+
+    function fail(error) {
+      if (settled) return;
+      settled = true;
+      detach();
+      restore();
+      reject(error);
+    }
+
+    function draw() {
+      try {
+        screen.paint(buildFrame({ themes, themeIndex, profileIndex, active, message, help: showingHelp, columns: output.columns, rows: output.rows, depth }).rows);
+      } catch (error) {
+        fail(error);
       }
-      render();
-    };
+    }
+
+    function onKey(value, key = {}) {
+      try {
+        if ((key.ctrl && key.name === "c") || key.name === "q" || key.name === "escape") return close();
+        if (key.name === "?" || value === "?") { showingHelp = !showingHelp; draw(); return; }
+        if (showingHelp) return;
+        message = "";
+        if (key.name === "up" || key.name === "k") themeIndex = (themeIndex - 1 + themes.length) % themes.length;
+        else if (key.name === "down" || key.name === "j") themeIndex = (themeIndex + 1) % themes.length;
+        else if (key.name === "left" || key.name === "h") profileIndex = (profileIndex - 1 + names.length) % names.length;
+        else if (key.name === "right" || key.name === "l") profileIndex = (profileIndex + 1) % names.length;
+        else if (/^[1-4]$/.test(value)) profileIndex = Number(value) - 1;
+        else if (key.name === "r") themeIndex = Math.floor(Math.random() * themes.length);
+        else if (key.name === "x") {
+          exportEverywhere(themes[themeIndex], names[profileIndex]);
+          message = `✓ Exported ${themes[themeIndex].name} to dist/ for ${targets.length} terminals`;
+        } else if (key.name === "return") {
+          const theme = themes[themeIndex];
+          const profileName = names[profileIndex];
+          try {
+            applyGhostty({ theme, profile: getProfile(profileName), profileName, font: active?.font || null });
+            const reload = reloadGhostty();
+            active = readState();
+            message = reload.reloaded
+              ? `✓ ${theme.name} + ${profileName} applied — Ghostty reloaded`
+              : `✓ Applied — press ⌘⇧, to reload Ghostty (${reload.reason})`;
+          } catch (error) {
+            message = `! ${error.message}`;
+          }
+        }
+        draw();
+      } catch (error) {
+        fail(error);
+      }
+    }
+
+    readline.emitKeypressEvents(input);
+    input.setRawMode(true);
+    input.resume();
+    screen.open();
     input.on("keypress", onKey);
+
+    // Safety nets: a signal or an unexpected exit must never leave the caller
+    // stuck in the alternate screen with a hidden cursor and no echo.
+    for (const [signal, code] of Object.entries(SIGNAL_EXITS)) {
+      const handler = () => {
+        process.exitCode = code;
+        close();
+      };
+      signalHandlers.set(signal, handler);
+      process.on(signal, handler);
+    }
+    process.on("exit", restore);
+
+    draw();
   });
 }

@@ -24,6 +24,7 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 - Generated the footer hints and the keyboard guide from a single keymap, and framed the guide as a proper modal.
 - Repainted only the Control Center rows that actually changed, inside a synchronized terminal frame, instead of clearing and redrawing the entire screen on every keystroke.
 - Coalesced terminal resize events into a single redraw so dragging a window no longer floods the terminal with full repaints.
+- Guaranteed the Control Center restores the cursor, the main screen, and terminal echo on SIGHUP, SIGINT, SIGTERM, an abrupt exit, or a failed repaint, and exits with the conventional signal status.
 
 ### Theme releases
 
