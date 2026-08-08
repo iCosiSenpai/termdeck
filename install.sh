@@ -2,7 +2,7 @@
 set -eu
 
 REPOSITORY="iCosiSenpai/termdeck"
-VERSION="${TERMDECK_VERSION:-v0.5.0}"
+VERSION="${TERMDECK_VERSION:-v0.5.5}"
 DATA_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}"
 INSTALL_DIR="${TERMDECK_INSTALL_DIR:-$DATA_ROOT/termdeck}"
 BIN_DIR="${TERMDECK_BIN_DIR:-$HOME/.local/bin}"

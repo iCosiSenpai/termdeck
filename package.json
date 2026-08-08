@@ -1,6 +1,6 @@
 {
   "name": "termdeck",
-  "version": "0.5.0",
+  "version": "0.5.5",
   "description": "A cinematic theme deck and profile switcher for Ghostty and modern terminals.",
   "type": "module",
   "bin": {

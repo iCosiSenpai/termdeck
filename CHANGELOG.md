@@ -4,6 +4,8 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 
 ## [Unreleased]
 
+## [0.5.5] - 2026-08-08
+
 ### Termdeck
 
 - Made the Special Editions' parity with Core themes a rule `npm run check` enforces rather than a property that happened to hold: Ghostty colour surfaces, the dock icon, the managed block, publication to Ghostty's theme list, and all seven export targets are asserted identical across categories. Verified by injecting a `category === "core"` branch into each of the four and confirming every one is caught.
@@ -103,6 +105,7 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 - Initial Ghostty theme engine.
 - Added seven palettes, four working profiles, safe config management, and five export targets.
 
+[0.5.5]: https://github.com/iCosiSenpai/termdeck/releases/tag/v0.5.5
 [0.5.0]: https://github.com/iCosiSenpai/termdeck/releases/tag/v0.5.0
 [0.4.0]: https://github.com/iCosiSenpai/termdeck/releases/tag/v0.4.0
 [0.3.0]: https://github.com/iCosiSenpai/termdeck/releases/tag/v0.3.0
