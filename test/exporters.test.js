@@ -71,21 +71,13 @@ test("full exporters include wallpaper and terminal effects", () => {
   assert.match(kitty, /background_image \/tmp\/nordic-aurora\.png/);
   assert.match(kitty, /background_blur 32/);
 
-  const wezterm = exportTheme(theme, "wezterm", options);
-  assert.match(wezterm, /macos_window_background_blur = 32/);
-  assert.match(wezterm, /inactive_pane_hsb/);
-  assert.ok(wezterm.indexOf(`Color = "${theme.background}"`) < wezterm.indexOf("File = \"/tmp/nordic-aurora.png\""));
 });
 
-test("Warp and Apple Terminal export native wallpaper profiles", () => {
+test("Warp exports a native wallpaper profile", () => {
   const warp = exportTheme(theme, "warp", { wallpaperPath: "/tmp/nordic-aurora.jpg" });
   assert.match(warp, /background_image:/);
   assert.match(warp, /path: 'nordic-aurora\.jpg'/);
 
-  const terminal = exportTheme(theme, "terminal", { wallpaperPath: "/tmp/nordic-aurora.png" });
-  assert.match(terminal, /^<\?xml/);
-  assert.match(terminal, /BackgroundImagePath/);
-  assert.match(terminal, /BackgroundBlur/);
 });
 
 test("Alacritty exports its complete native subset without fake wallpaper support", () => {

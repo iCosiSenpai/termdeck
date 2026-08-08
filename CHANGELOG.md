@@ -4,7 +4,13 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 
 ## [Unreleased]
 
+### Removed
+
+- **Breaking:** the Apple Terminal and WezTerm export targets. `termdeck export --target terminal` and `--target wezterm` now fail with the list of remaining targets. Apple Terminal's package was the only one that fabricated another platform's binary serialization by hand, and installing it would have meant writing into `com.apple.Terminal`'s preference domain. WezTerm is configured in Lua, by hand, by people who want a module to `require` rather than a file left in a directory; serving that well is a different feature. Five terminals remain, and all five are now configured automatically.
+
 ### Termdeck
+
+- Completed the set with `termdeck install <theme> --target alacritty`. TOML forbids declaring a table twice, so when an `alacritty.toml` already declares `[general]` or an `import`, Termdeck writes the theme, leaves the configuration untouched, and hands over the single line to add — pointing at a fixed path, so it is only ever added once.
 
 - Added `termdeck install <theme> --target iterm2|warp|kitty`, which puts the generated package where that terminal reads it instead of leaving it in `./dist/` with instructions. Every file written is recorded in `installs.json`, so `termdeck uninstall --target NAME` takes back exactly those rather than guessing from a naming convention. Kitty's `include` goes inside a marked block with a backup taken first, the way the Ghostty integration already works, and a terminal that is not installed is reported rather than having a configuration directory created for it.
 

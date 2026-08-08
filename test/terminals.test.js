@@ -169,7 +169,7 @@ test("uninstalling takes back exactly what the receipt says", () => {
 });
 
 test("every installable target declares where it goes and what it needs", () => {
-  assert.deepEqual(installTargets, ["iterm2", "warp", "kitty"]);
+  assert.deepEqual(installTargets, ["iterm2", "warp", "kitty", "alacritty"]);
   assert.ok(!installTargets.includes("ghostty"), "termdeck apply is Ghostty's installer, and does far more than copy a file");
 
   for (const target of installTargets) {
@@ -178,6 +178,59 @@ test("every installable target declares where it goes and what it needs", () => 
     assert.ok((installer.bundles?.length || 0) + (installer.binaries?.length || 0) > 0, `${target} cannot be detected`);
     assert.match(installer.directory({ HOME: "/home/x" }, installer.platforms[0]), /^\//, `${target} has no destination`);
     assert.ok(installer.next, `${target} does not say what to do next`);
-    assert.match(installedName(theme, target), /^termdeck-tokyo-midnight\./, `${target} writes an unidentifiable file`);
+    assert.match(installedName(theme, target), /^termdeck[-.]/, `${target} writes an unidentifiable file`);
   }
+});
+
+test("Alacritty is imported, or refused when TOML will not allow a second table", () => {
+  const { env, remove } = sandbox();
+  const conf = path.join(env.XDG_CONFIG_HOME, "alacritty", "alacritty.toml");
+
+  // A configuration with no [general] of its own can be amended safely.
+  fs.mkdirSync(path.dirname(conf), { recursive: true });
+  fs.writeFileSync(conf, "[font]\nsize = 13\n");
+  const result = installForTerminal({ theme, target: "alacritty", env, platform: "linux", detect: present });
+
+  assert.equal(path.basename(result.output), "termdeck.toml", "a fixed name, so the import never has to change");
+  const written = fs.readFileSync(conf, "utf8");
+  assert.match(written, /\[font\]/, "what the reader wrote is kept");
+  assert.match(written, new RegExp(`^import = \\["${result.output.replaceAll("/", "\\/")}"\\]$`, "m"));
+  assert.equal(written.match(/^\[general\]$/gm).length, 1, "exactly one [general]");
+  assert.equal(fs.existsSync(path.join(path.dirname(conf), "assets")), false, "Alacritty has no wallpaper to place");
+
+  // Installing again is idempotent rather than additive.
+  installForTerminal({ theme: getTheme("ember-forge"), target: "alacritty", env, platform: "linux", detect: present });
+  const again = fs.readFileSync(conf, "utf8");
+  assert.equal(again.match(/^\[general\]$/gm).length, 1, "still exactly one");
+  assert.equal(again.match(/^import = /gm).length, 1);
+  assert.match(fs.readFileSync(result.output, "utf8"), /Ember Forge/, "and the imported file is the new theme");
+
+  remove();
+});
+
+test("a reader who already declares [general] is handed the line instead of losing their file", () => {
+  const { env, remove } = sandbox();
+  const conf = path.join(env.XDG_CONFIG_HOME, "alacritty", "alacritty.toml");
+  fs.mkdirSync(path.dirname(conf), { recursive: true });
+  const mine = "[general]\nlive_config_reload = true\n";
+  fs.writeFileSync(conf, mine);
+
+  assert.throws(
+    () => installForTerminal({ theme, target: "alacritty", env, platform: "linux", detect: present }),
+    /TOML does not allow a second one[\s\S]*import = \["/,
+  );
+  assert.equal(fs.readFileSync(conf, "utf8"), mine, "their configuration is untouched");
+
+  // The theme file is still written, because the instruction handed over points
+  // at it — and recorded, because an unrecorded file is one uninstall cannot take
+  // back.
+  const written = path.join(env.XDG_CONFIG_HOME, "alacritty", "termdeck.toml");
+  assert.ok(fs.existsSync(written), "the file the reader is told to import exists");
+  assert.deepEqual(readManifest(env).alacritty.themes["tokyo-midnight"].files, [written]);
+  assert.deepEqual(uninstallFromTerminal({ target: "alacritty", env }).removed, [written], "and can be taken back");
+
+  // Their own import is equally a reason to stop.
+  fs.writeFileSync(conf, 'import = ["other.toml"]\n');
+  assert.throws(() => installForTerminal({ theme, target: "alacritty", env, platform: "linux", detect: present }), /already declares/);
+  remove();
 });

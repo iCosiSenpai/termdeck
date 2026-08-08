@@ -177,15 +177,13 @@ The block is checked in isolation on purpose. Validating the merged file would f
 
 ## One deck, many terminals
 
-Termdeck exports the richest configuration each terminal can represent natively. The selected Cozy, Focus, Glass, or Presentation profile travels with the palette instead of being flattened into colors. Four terminals are configured for you; the remaining three are generated as packages you install once — see [Installing a package](#installing-a-package).
+Termdeck configures **five terminals, all of them automatically**. The selected Cozy, Focus, Glass, or Presentation profile travels with the palette instead of being flattened into colors.
 
 | Terminal | Level | Art | Opacity / blur | Cursor | Chrome / layout | Panes | Package |
 | --- | --- | :---: | :---: | :---: | :---: | :---: | --- |
 | **Ghostty** | Full Experience | ✓ | ✓ | ✓ | ✓ | ✓ | `.conf` |
-| **WezTerm** | Full Experience | ✓ | ✓ | ✓ | ✓ | ✓ | `.lua` |
 | **Kitty** | Full Experience | ✓ | ✓ | ✓ | ✓ | ✓ | `.conf` |
 | **iTerm2** | Visual Profile | ✓ | ✓ | ✓ | — | Global¹ | Dynamic Profile `.json` |
-| **Apple Terminal** | Visual Profile | ✓ | ✓ | ✓ | — | — | `.terminal` |
 | **Warp** | Visual Profile | ✓ | Global² | ✓ | Global² | Global² | `.yaml` + `.jpg` |
 | **Alacritty** | Native Styling | —³ | ✓ | ✓ | ✓ | —³ | `.toml` |
 
@@ -193,17 +191,18 @@ Termdeck exports the richest configuration each terminal can represent natively.
 2. Warp theme YAML natively carries colors, cursor, and [JPEG background art](https://docs.warp.dev/terminal/appearance/custom-themes). Window opacity, blur, and pane dimming remain global Warp settings rather than theme fields.
 3. The complete [Alacritty configuration reference](https://alacritty.org/config-alacritty.html) provides opacity, macOS blur, padding, decorations, and cursor settings but no background-image or native pane system. Termdeck does not fake either feature.
 
-WezTerm receives a complete Lua configuration with background layers and inactive-pane treatment ([background layers](https://wezterm.org/config/lua/config/background.html)); Kitty receives image layout, tint, opacity, macOS blur, padding, decorations, cursor, and inactive-window styling ([Kitty configuration](https://sw.kovidgoyal.net/kitty/conf/)). Apple Terminal profiles support background images, transparency, blur, inactive-window effects, and cursor configuration ([Apple Terminal profile documentation](https://support.apple.com/guide/terminal/change-profiles-text-settings-trmltxt/mac)).
+Kitty receives image layout, tint, opacity, macOS blur, padding, decorations, cursor, and inactive-window styling ([Kitty configuration](https://sw.kovidgoyal.net/kitty/conf/)).
+
+Apple Terminal and WezTerm were dropped in 0.6.0. Apple Terminal required hand-built `NSKeyedArchiver` plists and a write into another application's preference domain to install. WezTerm is configured in Lua, by hand, by people who want a module to `require` rather than a file left in a directory — serving that well is a different feature, not this one.
 
 ### Export packages
 
-The Control Center exports all seven packages with <kbd>X</kbd>. A single target can be scripted with the same working profile:
+The Control Center exports every package with <kbd>X</kbd>. A single target can be scripted with the same working profile:
 
 ```sh
-termdeck export tokyo-midnight --target wezterm --profile glass
 termdeck export nordic-aurora --target kitty --profile cozy
 termdeck export resonant-rover --target warp --profile presentation
-termdeck export chrome-moon --target wezterm --profile glass
+termdeck export chrome-moon --target iterm2 --profile glass
 termdeck capabilities
 ```
 
@@ -217,22 +216,27 @@ Every export places its wallpaper beside the generated configuration (or in an a
 termdeck install tokyo-midnight --target iterm2 --profile glass
 termdeck install nordic-aurora --target warp
 termdeck install ember-forge --target kitty
+termdeck install carbon-mono --target alacritty
 termdeck uninstall --target kitty
 ```
 
 Termdeck keeps a receipt of every file it wrote, at `~/.config/termdeck/installs.json`, so uninstalling removes exactly those and never guesses from a naming convention. Where a terminal needs a line adding to a configuration file you own — Kitty's `include` — it goes inside a marked block with a timestamped backup taken first, exactly as the Ghostty integration works. A terminal that is not installed is reported rather than having a configuration directory created for it.
 
-Kitty reads one theme file, so installing a second theme replaces the first and takes its files with it. iTerm2 and Warp have theme pickers, so installs accumulate there and you choose among them.
+Kitty and Alacritty are each pointed at one theme file, so installing a second theme replaces the first and takes its files with it. iTerm2 and Warp have theme pickers, so installs accumulate there and you choose among them.
 
-| Terminal | How a theme gets there |
-| --- | --- |
-| **Ghostty** | Automatic — `termdeck apply <theme>` |
-| **iTerm2** | Automatic — `termdeck install <theme> --target iterm2` |
-| **Warp** | Automatic — `termdeck install <theme> --target warp` |
-| **Kitty** | Automatic — `termdeck install <theme> --target kitty` |
-| **Alacritty** | Copy the `.toml` into `~/.config/alacritty/` and add it to `import` under `[general]` in `alacritty.toml` |
-| **Apple Terminal** | `open <file>.terminal` to import the profile, then make it the default in Settings → Profiles |
-| **WezTerm** | The `.lua` is a complete configuration: use it as `~/.config/wezterm/wezterm.lua`, or copy its `config.*` assignments into your existing one |
+| Terminal | How a theme gets there | What Termdeck adds to a file you own |
+| --- | --- | --- |
+| **Ghostty** | `termdeck apply <theme>` | A marked block in its config |
+| **iTerm2** | `termdeck install <theme> --target iterm2` | Nothing — it watches its Dynamic Profiles directory |
+| **Warp** | `termdeck install <theme> --target warp` | Nothing — it watches its themes directory |
+| **Kitty** | `termdeck install <theme> --target kitty` | One `include`, in a marked block |
+| **Alacritty** | `termdeck install <theme> --target alacritty` | One `import`, in a marked block |
+
+Alacritty is the one case Termdeck can refuse. TOML does not allow the same table twice, so if your `alacritty.toml` already declares `[general]` or an `import` of its own, adding a second would stop Alacritty parsing the file. Termdeck writes the theme, leaves your configuration alone, and hands you the single line to add — pointing at a fixed path, so you only ever add it once:
+
+```toml
+import = ["~/.config/alacritty/termdeck.toml"]
+```
 
 Alacritty loads the importing file last, so anything you set in your own `alacritty.toml` still wins over the imported theme.
 

@@ -7,7 +7,6 @@ test("every export target declares an honest capability contract", () => {
   assert.deepEqual(targets, Object.keys(terminalCapabilities));
   assert.equal(terminalCapabilities.alacritty.wallpaper, false);
   assert.equal(terminalCapabilities.alacritty.panes, false);
-  assert.equal(terminalCapabilities.wezterm.level, "full");
   assert.equal(terminalCapabilities.kitty.wallpaper, true);
   assert.equal(terminalCapabilities.ghostty.decorations, true);
   assert.equal(terminalCapabilities.iterm2.decorations, false);

@@ -20,10 +20,8 @@
     "themes",
     "iterm2",
     "kitty",
-    "wezterm",
     "alacritty",
-    "warp",
-    "macos-terminal"
+    "warp"
   ],
   "author": "Alessio Cosi",
   "license": "MIT",

@@ -577,12 +577,12 @@ test("exporting reports every target instead of claiming blanket success", () =>
 
   const complete = exportEverywhere(theme, "cozy", root);
   assert.equal(complete.failed.length, 0);
-  assert.equal(complete.written.length, 7);
+  assert.equal(complete.written.length, 5);
 
   const broken = exportEverywhere({ ...theme, wallpaper: "assets/wallpapers/missing.png" }, "cozy", root);
   assert.ok(broken.failed.length > 0, "a missing asset must be reported");
   assert.ok(broken.written.length > 0, "targets that do not need the asset are still written");
-  assert.equal(broken.written.length + broken.failed.length, 7);
+  assert.equal(broken.written.length + broken.failed.length, 5);
   assert.match(broken.failed[0].message, /Wallpaper asset missing/);
 
   fs.rmSync(root, { recursive: true, force: true });
@@ -607,8 +607,8 @@ test("a slow action reports that it started before it reports the outcome", asyn
     input.emit("keypress", "x", { name: "x" });
 
     assert.equal(frames.length, 2, "the pending state and the outcome are painted separately");
-    assert.match(frames[0], /… Exporting .+ for 7 terminals/, "the deck says what it is doing before it blocks");
-    assert.match(frames[1], /✓ Exported .+ to dist\/ for 7 terminals/, "and then reports the outcome");
+    assert.match(frames[0], /… Exporting .+ for 5 terminals/, "the deck says what it is doing before it blocks");
+    assert.match(frames[1], /✓ Exported .+ to dist\/ for 5 terminals/, "and then reports the outcome");
 
     input.emit("keypress", "\u001b", { name: "escape" });
     await closed;

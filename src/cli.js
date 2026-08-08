@@ -47,7 +47,7 @@ Usage:
   termdeck capabilities
   termdeck profiles
   termdeck status
-  termdeck install <theme> --target iterm2|warp|kitty [--profile NAME]
+  termdeck install <theme> --target iterm2|warp|kitty|alacritty [--profile NAME]
   termdeck install-themes
   termdeck update [--yes]
   termdeck version
@@ -58,7 +58,7 @@ Examples:
   termdeck apply tokyo-midnight --profile glass
   termdeck apply resonant-rover --profile cozy --font "JetBrainsMono Nerd Font"
   termdeck apply ember-forge --icon        # paint the macOS dock icon to match
-  termdeck export nordic-aurora --target wezterm --profile glass`);
+  termdeck export nordic-aurora --target kitty --profile glass`);
 }
 
 function parseOptions(args) {

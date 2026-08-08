@@ -72,17 +72,51 @@ export const installers = {
     directory: (env) => path.join(xdgConfig(env), "kitty"),
     wiring: {
       file: (env) => path.join(xdgConfig(env), "kitty", "kitty.conf"),
-      line: (installed) => `include ${path.basename(installed)}`,
+      block: (installed) => `include ${path.basename(installed)}`,
     },
     next: "Reload with ctrl+shift+F5, or restart Kitty.",
+  },
+  alacritty: {
+    platforms: ["darwin", "linux"],
+    bundles: ["/Applications/Alacritty.app"],
+    binaries: ["alacritty"],
+    directory: (env) => path.join(xdgConfig(env), "alacritty"),
+    // A stable file name, so the import never has to be edited again — including
+    // by hand, in the case below where Termdeck refuses to edit it at all.
+    fileName: () => "termdeck.toml",
+    wiring: {
+      file: (env) => path.join(xdgConfig(env), "alacritty", "alacritty.toml"),
+      /**
+       * TOML forbids declaring the same table twice, so a second `[general]`
+       * would stop Alacritty parsing the file at all. When the reader already has
+       * one — or an `import` of their own — Termdeck refuses and hands over the
+       * single line to add, rather than risking their configuration.
+       */
+      block: (installed, existing) => {
+        const outside = removeManagedBlock(existing);
+        if (/^\s*\[general\]/m.test(outside) || /^\s*import\s*=/m.test(outside)) {
+          throw new Error([
+            "Your alacritty.toml already declares [general] or import, and TOML does not allow a second one.",
+            `Add this to it yourself, once — the path never changes:  import = ["${installed}"]`,
+            "Then `termdeck install --target alacritty` will keep that file up to date on its own.",
+          ].join("\n"));
+        }
+        return `[general]\nimport = ["${installed}"]`;
+      },
+    },
+    next: "Alacritty reloads live by default; otherwise restart it.",
   },
 };
 
 export const installTargets = Object.keys(installers);
 
-/** The file name Termdeck writes, prefixed so a receipt is not the only record. */
+/**
+ * The file name Termdeck writes. Prefixed so a receipt is not the only record, and
+ * fixed where a terminal is pointed at it by a line the reader may have to write
+ * once by hand.
+ */
 export function installedName(theme, target) {
-  return `termdeck-${theme.slug}.${extensionFor(target)}`;
+  return installers[target]?.fileName?.(theme) || `termdeck-${theme.slug}.${extensionFor(target)}`;
 }
 
 /**
@@ -115,8 +149,9 @@ export function detectTerminal(target, { platform = process.platform, env = proc
 function wireIn({ wiring, installed, env }) {
   const file = wiring.file(env);
   const existing = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
+  const body = wiring.block(installed, existing);
   const backupFile = existing ? takeBackup(file) : null;
-  const block = [START_MARKER, wiring.line(installed), END_MARKER].join("\n");
+  const block = [START_MARKER, body, END_MARKER].join("\n");
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, replaceManagedBlock(existing, block));
   return { file, backupFile };
@@ -170,13 +205,27 @@ export function installForTerminal({
   const directory = installer.directory(env, platform);
   const output = path.join(directory, installedName(theme, target));
   const written = writeThemeExport({ theme, target, output, profileName });
-  const wired = installer.wiring ? wireIn({ wiring: installer.wiring, installed: output, env }) : null;
 
   entry.themes[theme.slug] = {
     files: [written.output, written.wallpaperFile].filter(Boolean),
     profile: profileName,
     installedAt: new Date().toISOString(),
   };
+
+  // The receipt is written before the wiring is attempted. A terminal whose
+  // configuration Termdeck refuses to edit still ends up with a theme file on
+  // disk — deliberately, because the instruction handed over points at it — and an
+  // unrecorded file is one uninstall could never take back.
+  let wired = null;
+  try {
+    wired = installer.wiring ? wireIn({ wiring: installer.wiring, installed: output, env }) : null;
+  } catch (error) {
+    entry.wiring = entry.wiring || null;
+    manifest[target] = entry;
+    writeManifest(manifest, env);
+    throw error;
+  }
+
   entry.wiring = wired?.file || entry.wiring || null;
   manifest[target] = entry;
   writeManifest(manifest, env);

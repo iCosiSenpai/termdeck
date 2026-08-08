@@ -3,7 +3,6 @@ import { terminalCapabilities } from "./capabilities.js";
 import { getProfile } from "./profiles.js";
 
 const clean = (color) => color.replace("#", "");
-const xmlEscape = (value) => String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 const names = ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "white"];
 
 export const targets = Object.keys(terminalCapabilities);
@@ -32,7 +31,7 @@ export function exportTheme(theme, target, options = {}) {
 }
 
 export function extensionFor(target) {
-  return { ghostty: "conf", wezterm: "lua", kitty: "conf", iterm2: "json", terminal: "terminal", warp: "yaml", alacritty: "toml" }[target];
+  return { ghostty: "conf", kitty: "conf", iterm2: "json", warp: "yaml", alacritty: "toml" }[target];
 }
 
 export function ghostty(theme, options = {}) {
@@ -163,53 +162,6 @@ white = "${bw}"
 `;
 }
 
-export function wezterm(theme, options = {}) {
-  const config = settings(options);
-  const quoted = (colors) => colors.map((color) => `"${color}"`).join(", ");
-  const cursorStyle = config.cursor === "bar"
-    ? (config.cursorBlink ? "BlinkingBar" : "SteadyBar")
-    : config.cursor === "underline"
-      ? (config.cursorBlink ? "BlinkingUnderline" : "SteadyUnderline")
-      : (config.cursorBlink ? "BlinkingBlock" : "SteadyBlock");
-  const decorations = config.titlebar === "hidden" ? "RESIZE" : config.titlebar === "transparent" ? "INTEGRATED_BUTTONS|RESIZE" : "TITLE|RESIZE";
-  return `-- ${theme.name} v${theme.version} — Termdeck Full Experience
-local wezterm = require "wezterm"
-local config = wezterm.config_builder()
-
-config.colors = {
-  foreground = "${theme.foreground}",
-  background = "${theme.background}",
-  cursor_bg = "${theme.cursor}",
-  cursor_fg = "${theme.background}",
-  selection_bg = "${theme.selectionBackground}",
-  selection_fg = "${theme.selectionForeground || theme.foreground}",
-  ansi = { ${quoted(theme.palette.slice(0, 8))} },
-  brights = { ${quoted(theme.palette.slice(8))} },
-}
-
-config.background = {
-  { source = { Color = "${theme.background}" }, width = "100%", height = "100%", opacity = 1.0 },
-  {
-    source = { File = "${String(config.wallpaperPath).replaceAll("\\", "\\\\").replaceAll('"', '\\"')}" },
-    opacity = ${Number(theme.wallpaperOpacity || 0.18)},
-    width = "Cover",
-    height = "Cover",
-    repeat_x = "NoRepeat",
-    repeat_y = "NoRepeat",
-    horizontal_align = "Center",
-    vertical_align = "Middle",
-  },
-}
-config.window_background_opacity = ${config.opacity}
-config.macos_window_background_blur = ${config.blur}
-config.window_padding = { left = ${config.paddingX}, right = ${config.paddingX}, top = ${config.paddingY}, bottom = ${config.paddingY} }
-config.default_cursor_style = "${cursorStyle}"
-config.window_decorations = "${decorations}"
-config.inactive_pane_hsb = { saturation = 0.78, brightness = ${config.inactiveOpacity} }
-
-return config
-`;
-}
 
 function hexToComponents(color) {
   const hex = clean(color);
@@ -262,59 +214,8 @@ export function iterm2(theme, options = {}) {
   return `${JSON.stringify({ Profiles: [profile] }, null, 2)}\n`;
 }
 
-function archivedTerminalColor(color, alpha = 1) {
-  const [r, g, b] = hexToComponents(color);
-  const components = Buffer.from(`${r} ${g} ${b} ${alpha}`, "utf8").toString("base64");
-  const archive = `<?xml version="1.0" encoding="UTF-8"?>
-<plist version="1.0"><dict>
-<key>$archiver</key><string>NSKeyedArchiver</string>
-<key>$objects</key><array><string>$null</string><dict>
-<key>$class</key><dict><key>CF$UID</key><integer>2</integer></dict>
-<key>NSColorSpace</key><integer>1</integer><key>NSRGB</key><data>${components}</data>
-</dict><dict><key>$classes</key><array><string>NSColor</string><string>NSObject</string></array><key>$classname</key><string>NSColor</string></dict></array>
-<key>$top</key><dict><key>root</key><dict><key>CF$UID</key><integer>1</integer></dict></dict>
-<key>$version</key><integer>100000</integer>
-</dict></plist>`;
-  return Buffer.from(archive, "utf8").toString("base64");
-}
 
-function terminalData(key, data) {
-  return `  <key>${xmlEscape(key)}</key><data>${data}</data>`;
-}
 
-export function terminal(theme, options = {}) {
-  const config = settings(options);
-  const ansiKeys = ["ANSIBlackColor", "ANSIRedColor", "ANSIGreenColor", "ANSIYellowColor", "ANSIBlueColor", "ANSIMagentaColor", "ANSICyanColor", "ANSIWhiteColor"];
-  const entries = [
-    ...theme.palette.slice(0, 8).map((color, index) => terminalData(ansiKeys[index], archivedTerminalColor(color))),
-    ...theme.palette.slice(8).map((color, index) => terminalData(ansiKeys[index].replace("ANSI", "ANSIBright"), archivedTerminalColor(color))),
-    terminalData("BackgroundColor", archivedTerminalColor(theme.background, config.opacity)),
-    terminalData("TextColor", archivedTerminalColor(theme.foreground)),
-    terminalData("TextBoldColor", archivedTerminalColor(theme.foreground)),
-    terminalData("CursorColor", archivedTerminalColor(theme.cursor)),
-    terminalData("SelectionColor", archivedTerminalColor(theme.selectionBackground)),
-  ];
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-${entries.join("\n")}
-  <key>BackgroundBlur</key><real>${Math.min(1, config.blur / 32)}</real>
-  <key>BackgroundSettingsForInactiveWindows</key><true/>
-  <key>BackgroundAlphaInactive</key><real>${config.inactiveOpacity}</real>
-  <key>BackgroundBlurInactive</key><real>${Math.min(1, config.blur / 64)}</real>
-  <key>BackgroundImagePath</key><string>${xmlEscape(config.wallpaperPath)}</string>
-  <key>CursorType</key><integer>${config.cursor === "underline" ? 1 : config.cursor === "bar" ? 2 : 0}</integer>
-  <key>CursorBlink</key><${config.cursorBlink ? "true" : "false"}/>
-  <key>ProfileCurrentVersion</key><real>2.09</real>
-  <key>columnCount</key><integer>120</integer>
-  <key>rowCount</key><integer>30</integer>
-  <key>name</key><string>Termdeck — ${xmlEscape(theme.name)}</string>
-  <key>type</key><string>Window Settings</string>
-</dict>
-</plist>
-`;
-}
 
 export function warp(theme, options = {}) {
   const config = settings(options);
@@ -341,4 +242,4 @@ export function defaultOutput(theme, target, cwd = process.cwd()) {
   return path.join(cwd, "dist", target, `${theme.slug}.${extensionFor(target)}`);
 }
 
-const exporters = { ghostty, wezterm, kitty, iterm2, terminal, warp, alacritty };
+const exporters = { ghostty, kitty, iterm2, warp, alacritty };
