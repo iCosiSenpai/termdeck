@@ -6,6 +6,8 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 
 ### Termdeck
 
+- Added `termdeck install <theme> --target iterm2|warp|kitty`, which puts the generated package where that terminal reads it instead of leaving it in `./dist/` with instructions. Every file written is recorded in `installs.json`, so `termdeck uninstall --target NAME` takes back exactly those rather than guessing from a naming convention. Kitty's `include` goes inside a marked block with a backup taken first, the way the Ghostty integration already works, and a terminal that is not installed is reported rather than having a configuration directory created for it.
+
 - Put a linter in front of `npm run check`, which until now verified syntax and behaviour but nothing in between. It found a shadowed global, three dead parameters, four `forEach` calls used as `map`, and a handful of pointless escapes — all now fixed. Biome is a development dependency and never reaches an installed copy; Termdeck still ships with no runtime dependencies.
 
 ## [0.5.5] - 2026-08-08

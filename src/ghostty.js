@@ -47,7 +47,7 @@ function timestamp() {
   return new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-");
 }
 
-function backup(file) {
+export function takeBackup(file) {
   if (!fs.existsSync(file)) return null;
   const destination = `${file}.termdeck-${timestamp()}.bak`;
   fs.copyFileSync(file, destination);
@@ -143,7 +143,7 @@ export function applyGhostty({ theme, profile, profileName, font, env = process.
   }
 
   const existing = fs.existsSync(paths.config) ? fs.readFileSync(paths.config, "utf8") : "";
-  const backupFile = existing ? backup(paths.config) : null;
+  const backupFile = existing ? takeBackup(paths.config) : null;
   fs.writeFileSync(paths.config, replaceManagedBlock(existing, block));
   fs.writeFileSync(
     paths.state,
@@ -186,7 +186,7 @@ export function uninstallGhostty(env = process.env) {
   if (!fs.existsSync(paths.config)) return { ...paths, changed: false, backupFile: null };
   const content = fs.readFileSync(paths.config, "utf8");
   if (!content.includes(START_MARKER)) return { ...paths, changed: false, backupFile: null };
-  const backupFile = backup(paths.config);
+  const backupFile = takeBackup(paths.config);
   fs.writeFileSync(paths.config, removeManagedBlock(content));
   if (fs.existsSync(paths.state)) fs.rmSync(paths.state);
   return { ...paths, changed: true, backupFile };

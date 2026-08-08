@@ -177,7 +177,7 @@ The block is checked in isolation on purpose. Validating the merged file would f
 
 ## One deck, many terminals
 
-Termdeck exports the richest configuration each terminal can represent natively. The selected Cozy, Focus, Glass, or Presentation profile travels with the palette instead of being flattened into colors. Ghostty is applied for you; the other six are generated as packages you install once — see [Installing an exported package](#installing-an-exported-package).
+Termdeck exports the richest configuration each terminal can represent natively. The selected Cozy, Focus, Glass, or Presentation profile travels with the palette instead of being flattened into colors. Four terminals are configured for you; the remaining three are generated as packages you install once — see [Installing a package](#installing-a-package).
 
 | Terminal | Level | Art | Opacity / blur | Cursor | Chrome / layout | Panes | Package |
 | --- | --- | :---: | :---: | :---: | :---: | :---: | --- |
@@ -209,16 +209,27 @@ termdeck capabilities
 
 Every export places its wallpaper beside the generated configuration (or in an adjacent `assets/` directory) and writes an absolute path, so the file works from wherever you install it. Warp artwork is converted to JPEG, the format its documented theme schema uses for `background_image`; that conversion uses macOS `sips`, so exporting the Warp package requires macOS. `termdeck capabilities` prints the contract directly from the same capability registry used by the exporters.
 
-### Installing an exported package
+### Installing a package
 
-**Ghostty is the only terminal Termdeck configures for you.** `termdeck apply` writes its managed block directly, and says so plainly when Ghostty is not installed rather than reporting a success nothing will read. For the other six, `termdeck export` and <kbd>X</kbd> write a package into `./dist/<terminal>/` and stop there — Termdeck never edits another terminal's configuration on your behalf. Installing one is a single step:
+`termdeck install` puts the package where its terminal reads it, and takes it back on request:
 
-| Terminal | Install the exported package |
+```sh
+termdeck install tokyo-midnight --target iterm2 --profile glass
+termdeck install nordic-aurora --target warp
+termdeck install ember-forge --target kitty
+termdeck uninstall --target kitty
+```
+
+Termdeck keeps a receipt of every file it wrote, at `~/.config/termdeck/installs.json`, so uninstalling removes exactly those and never guesses from a naming convention. Where a terminal needs a line adding to a configuration file you own — Kitty's `include` — it goes inside a marked block with a timestamped backup taken first, exactly as the Ghostty integration works. A terminal that is not installed is reported rather than having a configuration directory created for it.
+
+Kitty reads one theme file, so installing a second theme replaces the first and takes its files with it. iTerm2 and Warp have theme pickers, so installs accumulate there and you choose among them.
+
+| Terminal | How a theme gets there |
 | --- | --- |
 | **Ghostty** | Automatic — `termdeck apply <theme>` |
-| **iTerm2** | Copy the `.json` into `~/Library/Application Support/iTerm2/DynamicProfiles/`; the profile appears immediately, no restart |
-| **Warp** | Copy **both** the `.yaml` and the `.jpg` into `~/.warp/themes/` — the theme references the image by name, relative to that directory |
-| **Kitty** | Copy the `.conf` into `~/.config/kitty/` and add `include <file>.conf` to `kitty.conf` |
+| **iTerm2** | Automatic — `termdeck install <theme> --target iterm2` |
+| **Warp** | Automatic — `termdeck install <theme> --target warp` |
+| **Kitty** | Automatic — `termdeck install <theme> --target kitty` |
 | **Alacritty** | Copy the `.toml` into `~/.config/alacritty/` and add it to `import` under `[general]` in `alacritty.toml` |
 | **Apple Terminal** | `open <file>.terminal` to import the profile, then make it the default in Settings → Profiles |
 | **WezTerm** | The `.lua` is a complete configuration: use it as `~/.config/wezterm/wezterm.lua`, or copy its `config.*` assignments into your existing one |
@@ -235,7 +246,8 @@ Termdeck does not replace your Ghostty configuration.
 - `termdeck uninstall` removes the managed integration and keeps a recovery copy.
 - Ghostty is asked to validate the managed block before your configuration is opened at all.
 - Palette previews never modify the active terminal.
-- Exported packages are written to `./dist/` and never installed into another terminal for you.
+- `termdeck install` writes into another terminal's directory only when asked, keeps a receipt of every file, and backs up any configuration of yours it adds a line to.
+- `termdeck export` writes to `./dist/` and installs nothing.
 - Update checks only read a public release feed; nothing is installed without an explicit confirmation.
 
 On macOS, Ghostty is managed at `~/Library/Application Support/com.mitchellh.ghostty/config`. Some opacity and titlebar changes can require a full Ghostty restart.

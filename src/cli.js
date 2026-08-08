@@ -8,6 +8,7 @@ import { writeThemeExport } from "./export-package.js";
 import { capabilityLabels, terminalCapabilities } from "./capabilities.js";
 import { applyGhostty, detectGhostty, ghosttyIcon, installGhosttyThemes, readState, reloadGhostty, resolvePaths, uninstallGhostty, uninstallGhosttyThemes, validateGhosttyConfig } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
+import { installForTerminal, installTargets, uninstallFromTerminal } from "./terminals.js";
 import { openDashboard } from "./dashboard.js";
 import { checkUpdates, refreshCommand, runUpgrade } from "./updates.js";
 import { createPalette, detectDepth } from "./ui/ansi.js";
@@ -46,6 +47,7 @@ Usage:
   termdeck capabilities
   termdeck profiles
   termdeck status
+  termdeck install <theme> --target iterm2|warp|kitty [--profile NAME]
   termdeck install-themes
   termdeck update [--yes]
   termdeck version
@@ -316,6 +318,24 @@ export async function run(argv) {
       else console.log(`${c.bold}${state.theme}@${state.themeVersion || "unknown"}${c.reset} · ${state.profile}${state.icon ? " · themed dock icon" : ""}\n${c.dim}${state.config}\nApplied ${state.appliedAt}${c.reset}`);
       break;
     }
+    case "install": {
+      const theme = getTheme(positional[0]);
+      const target = optionValue(options, "target", null);
+      if (!target) throw new Error(`--target is required. Choose: ${installTargets.join(", ")}.`);
+      const profileName = optionValue(options, "profile", "cozy");
+      const result = installForTerminal({ theme, target, profileName });
+      console.log(`${c.green}✓${c.reset} Installed ${c.bold}${theme.name}${c.reset} for ${terminalCapabilities[target].name} with the ${profileName} profile.`);
+      console.log(`${c.dim}${result.output}${c.reset}`);
+      if (result.wallpaperFile) console.log(`${c.dim}${result.wallpaperFile}${c.reset}`);
+      for (const file of result.superseded) console.log(`${c.dim}Replaced: ${file}${c.reset}`);
+      if (result.wiring) {
+        console.log(`${c.green}✓${c.reset} Added the managed include to ${c.dim}${result.wiring.file}${c.reset}`);
+        if (result.wiring.backupFile) console.log(`${c.dim}Backup: ${result.wiring.backupFile}${c.reset}`);
+      }
+      console.log(`${result.next}`);
+      console.log(`${c.dim}Take it back with: termdeck uninstall --target ${target}${c.reset}`);
+      break;
+    }
     case "install-themes": {
       const result = installGhosttyThemes();
       console.log(`${c.green}✓${c.reset} Published ${c.bold}${result.installed.length}${c.reset} themes to Ghostty's own theme directory.`);
@@ -333,6 +353,16 @@ export async function run(argv) {
       break;
     case "doctor": doctor(); break;
     case "uninstall": {
+      const target = optionValue(options, "target", null);
+      if (target) {
+        const taken = uninstallFromTerminal({ target });
+        if (taken.removed.length === 0 && !taken.wiring) console.log(`Termdeck has nothing installed for ${terminalCapabilities[target]?.name || target}.`);
+        else {
+          for (const file of taken.removed) console.log(`${c.green}✓${c.reset} Removed ${c.dim}${file}${c.reset}`);
+          if (taken.wiring) console.log(`${c.green}✓${c.reset} Removed the managed include from ${c.dim}${taken.wiring.file}${c.reset}  ${c.dim}Backup: ${taken.wiring.backupFile}${c.reset}`);
+        }
+        break;
+      }
       const result = uninstallGhostty();
       console.log(result.changed ? `${c.green}✓${c.reset} Removed the managed block. Backup: ${result.backupFile}` : "Nothing to remove.");
       const themes = uninstallGhosttyThemes();
