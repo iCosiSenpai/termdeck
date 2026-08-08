@@ -6,6 +6,10 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 
 ### Termdeck
 
+- Gave the theme every surface Ghostty colours, not only the classic sixteen: the character under the block cursor, the split divider, and both search highlights, which until now stayed black-on-golden-yellow under all eight themes.
+- Let the theme paint Ghostty's own macOS dock icon with `--icon`: the ghost in the theme's accent, the screen as a gradient from its background up to its selection tone. Opt-in, remembered between applies, removed by `--no-icon` or `termdeck uninstall`, and written only where macOS can act on it.
+- Added `termdeck install-themes`, which publishes the catalog to Ghostty's own theme directory so `ghostty +list-themes` lists all eight and `theme = Termdeck Tokyo Midnight` resolves without Termdeck in the loop. Published files are prefixed, because Ghostty ships 463 themes and searches the reader's directory first.
+- Made Ghostty validate the managed block before the reader's configuration is opened: only a block `ghostty +validate-config` accepts is merged, and a rejection arrives as Ghostty's own diagnostic with nothing written and nothing to undo. Problems elsewhere in the file are reported, never repaired — validating the merged file would have blamed Termdeck for an unrelated mistake and undone a good change to atone for it.
 - Stopped reporting a plain success when Ghostty is not installed: `termdeck apply` still writes the managed block, then says the file will go unread and names the export that reaches the terminal you are actually using. The Control Center says the same in its status row and on the destination line, and neither spawns a reload for a terminal that is not there.
 - Made the Ghostty bundle location overridable with `TERMDECK_GHOSTTY_APP`, so an installation outside `/Applications` is recognised.
 

@@ -137,6 +137,44 @@ Special Editions live in their own section at the bottom of the Control Center. 
   </tr>
 </table>
 
+## What a theme owns on Ghostty
+
+Ghostty is the terminal Termdeck configures directly, and it exposes far more than sixteen colours. On Ghostty a theme is not a palette — it is the whole look of the application.
+
+**Every surface Ghostty colours comes from the theme.** Beyond the background, foreground, cursor, selection and the sixteen ANSI slots, the deck also owns the character under the block cursor, the split divider, and both search highlights — the last of which would otherwise stay black-on-golden-yellow under all eight themes.
+
+**The dock icon can match.** Ghostty lets its own macOS app icon be restyled, so `--icon` paints the ghost in the theme's accent and the little screen it holds as a gradient from that theme's background up to its selection tone:
+
+```sh
+termdeck apply tokyo-midnight --icon     # ghost #FF7EDB, screen #0B0C18 → #302A5C
+termdeck apply tokyo-midnight --no-icon  # back to the official icon
+```
+
+Opt-in, remembered, and macOS-only — asked for anywhere else it writes nothing and says so. A theme can declare its own `icon` with a frame (`aluminum`, `beige`, `plastic`, `chrome`), a ghost colour, and up to sixty-four gradient stops.
+
+**The catalog can live in Ghostty's own theme list.** `termdeck install-themes` publishes all eight where Ghostty looks for user themes, so they appear in `ghostty +list-themes` marked `(user)` and can be selected without Termdeck in the loop:
+
+```sh
+termdeck install-themes
+ghostty +list-themes | grep Termdeck
+```
+
+```
+theme = Termdeck Tokyo Midnight
+theme = light:Termdeck Carbon Mono,dark:Termdeck Tokyo Midnight   # follows the system
+```
+
+Every published file is prefixed, because Ghostty ships 463 themes and searches your directory first — an unprefixed name would silently shadow one of them. `termdeck uninstall` takes back the prefixed files and leaves any theme you wrote yourself alone.
+
+**Ghostty gets the last word before anything is written.** Termdeck asks `ghostty +validate-config` about the managed block on its own, and only a block Ghostty accepts reaches your configuration. A rejection arrives as Ghostty's own diagnostic, with your file never opened:
+
+```
+termdeck: Ghostty rejected the generated configuration: cursor-style: invalid value
+"triangle", valid values are: bar, block, underline, block_hollow
+```
+
+The block is checked in isolation on purpose. Validating the merged file would fail on any unrelated mistake of your own and make Termdeck undo a good change to atone for it. Problems elsewhere in your configuration are reported, never repaired.
+
 ## One deck, many terminals
 
 Termdeck exports the richest configuration each terminal can represent natively. The selected Cozy, Focus, Glass, or Presentation profile travels with the palette instead of being flattened into colors. Ghostty is applied for you; the other six are generated as packages you install once — see [Installing an exported package](#installing-an-exported-package).
@@ -195,6 +233,7 @@ Termdeck does not replace your Ghostty configuration.
 - It creates a backup before every change.
 - Theme files and wallpaper assets are installed under `~/.config/termdeck`.
 - `termdeck uninstall` removes the managed integration and keeps a recovery copy.
+- Ghostty is asked to validate the managed block before your configuration is opened at all.
 - Palette previews never modify the active terminal.
 - Exported packages are written to `./dist/` and never installed into another terminal for you.
 - Update checks only read a public release feed; nothing is installed without an explicit confirmation.
@@ -251,7 +290,7 @@ termdeck uninstall
 <details>
 <summary><strong>Theme authoring and preview generation</strong></summary>
 
-Theme definitions live in `themes/*.json` and require a SemVer version, category, order, wallpaper, provenance, foreground/background colors, cursor, selection colors, and exactly sixteen ANSI colors.
+Theme definitions live in `themes/*.json` and require a SemVer version, category, order, wallpaper, provenance, foreground/background colors, cursor, selection colors, and exactly sixteen ANSI colors. An optional `icon` object overrides the Ghostty dock icon derived from the palette.
 
 ```sh
 npm run previews
