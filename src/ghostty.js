@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { projectRoot } from "./catalog.js";
+import { loadThemes, projectRoot } from "./catalog.js";
 import { ghostty } from "./exporters.js";
 
 export const START_MARKER = "# >>> termdeck (managed; edit with termdeck)";
@@ -156,8 +156,55 @@ export function uninstallGhostty(env = process.env) {
   return { ...paths, changed: true, backupFile };
 }
 
-export function readState(env = process.env) {
-  const paths = resolvePaths(env);
+/**
+ * Every theme Termdeck installs into Ghostty's own theme directory carries this
+ * prefix. Ghostty ships hundreds of themes and searches the reader's directory
+ * first, so an unprefixed name would silently shadow one of them.
+ */
+export const THEME_PREFIX = "Termdeck ";
+
+/**
+ * Where Ghostty looks for the reader's own themes. This is the XDG path on every
+ * platform, including macOS, where the configuration itself lives elsewhere —
+ * confirmed by Ghostty naming this exact path when a theme cannot be found.
+ */
+export function ghosttyThemeDir(env = process.env) {
+  const home = env.HOME || os.homedir();
+  return path.join(env.XDG_CONFIG_HOME || path.join(home, ".config"), "ghostty", "themes");
+}
+
+/** The name a reader types after `theme =`, and what `ghostty +list-themes` shows. */
+export function ghosttyThemeName(theme) {
+  return `${THEME_PREFIX}${theme.name}`;
+}
+
+/**
+ * Publishes the catalog to Ghostty's own theme directory, so the deck's palettes
+ * appear in `ghostty +list-themes` and can be selected by hand, by a dotfiles
+ * repository, or by a light/dark pair, with no Termdeck in the loop.
+ */
+export function installGhosttyThemes({ themes = loadThemes(), env = process.env } = {}) {
+  const directory = ghosttyThemeDir(env);
+  fs.mkdirSync(directory, { recursive: true });
+  const installed = themes.map((theme) => {
+    const name = ghosttyThemeName(theme);
+    const file = path.join(directory, name);
+    fs.writeFileSync(file, ghostty(theme, { full: false }));
+    return { slug: theme.slug, name, file };
+  });
+  return { directory, installed };
+}
+
+/** Removes only what Termdeck put there; the reader's own themes are theirs. */
+export function uninstallGhosttyThemes(env = process.env) {
+  const directory = ghosttyThemeDir(env);
+  if (!fs.existsSync(directory)) return { directory, removed: [] };
+  const removed = fs.readdirSync(directory).filter((name) => name.startsWith(THEME_PREFIX));
+  for (const name of removed) fs.rmSync(path.join(directory, name), { force: true });
+  return { directory, removed };
+}
+
+export function readState(env = process.env) {  const paths = resolvePaths(env);
   if (!fs.existsSync(paths.state)) return null;
   try {
     return JSON.parse(fs.readFileSync(paths.state, "utf8"));

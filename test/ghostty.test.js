@@ -3,8 +3,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { getTheme } from "../src/catalog.js";
-import { applyGhostty, detectGhostty, END_MARKER, reloadGhostty, replaceManagedBlock, START_MARKER, uninstallGhostty, validateGhosttyConfig } from "../src/ghostty.js";
+import { getTheme, loadThemes } from "../src/catalog.js";
+import { applyGhostty, detectGhostty, END_MARKER, ghosttyThemeDir, ghosttyThemeName, installGhosttyThemes, reloadGhostty, replaceManagedBlock, START_MARKER, uninstallGhostty, uninstallGhosttyThemes, validateGhosttyConfig } from "../src/ghostty.js";
+import { ghostty } from "../src/exporters.js";
 import { getProfile } from "../src/profiles.js";
 
 test("managed block preserves user configuration and is idempotent", () => {
@@ -204,3 +205,41 @@ test("a configuration Ghostty refuses never reaches the reader's file", () => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+
+
+test("the catalog is published where Ghostty looks for the reader's own themes", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "termdeck-publish-"));
+  const env = { ...process.env, HOME: root, XDG_CONFIG_HOME: path.join(root, "xdg") };
+  const themes = loadThemes();
+
+  // The XDG path, on every platform: Ghostty names this directory itself when a
+  // theme cannot be found, macOS included.
+  assert.equal(ghosttyThemeDir(env), path.join(root, "xdg", "ghostty", "themes"));
+  assert.equal(ghosttyThemeDir({ HOME: root }), path.join(root, ".config", "ghostty", "themes"));
+
+  const result = installGhosttyThemes({ env });
+  assert.equal(result.installed.length, themes.length);
+  for (const theme of themes) {
+    const file = path.join(result.directory, `Termdeck ${theme.name}`);
+    assert.ok(fs.existsSync(file), `${theme.slug} was not published`);
+    assert.equal(fs.readFileSync(file, "utf8"), ghostty(theme, { full: false }), "the published theme is the applied theme");
+  }
+  // Ghostty ships hundreds of themes and searches this directory first, so the
+  // prefix is what keeps Termdeck from shadowing one of them.
+  assert.equal(ghosttyThemeName(themes[0]), `Termdeck ${themes[0].name}`);
+
+  // Publishing again is a refresh, not a duplication.
+  installGhosttyThemes({ env });
+  assert.equal(fs.readdirSync(result.directory).length, themes.length);
+
+  // Uninstalling takes back only what Termdeck put there.
+  const mine = path.join(result.directory, "My Own Theme");
+  fs.writeFileSync(mine, "background = #000000\n");
+  const removed = uninstallGhosttyThemes(env);
+  assert.equal(removed.removed.length, themes.length);
+  assert.deepEqual(fs.readdirSync(result.directory), ["My Own Theme"], "the reader's own theme is left alone");
+
+  assert.deepEqual(uninstallGhosttyThemes({ HOME: root, XDG_CONFIG_HOME: path.join(root, "absent") }).removed, [], "nothing to remove is not an error");
+
+  fs.rmSync(root, { recursive: true, force: true });
+});

@@ -6,7 +6,7 @@ import { getTheme, loadThemes, packageMetadata, pickRandomTheme } from "./catalo
 import { defaultOutput, targets } from "./exporters.js";
 import { writeThemeExport } from "./export-package.js";
 import { capabilityLabels, terminalCapabilities } from "./capabilities.js";
-import { applyGhostty, detectGhostty, readState, reloadGhostty, resolvePaths, uninstallGhostty, validateGhosttyConfig } from "./ghostty.js";
+import { applyGhostty, detectGhostty, installGhosttyThemes, readState, reloadGhostty, resolvePaths, uninstallGhostty, uninstallGhosttyThemes, validateGhosttyConfig } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
 import { openDashboard } from "./dashboard.js";
 import { checkUpdates, refreshCommand, runUpgrade } from "./updates.js";
@@ -46,6 +46,7 @@ Usage:
   termdeck capabilities
   termdeck profiles
   termdeck status
+  termdeck install-themes
   termdeck update [--yes]
   termdeck version
   termdeck doctor
@@ -296,6 +297,15 @@ export async function run(argv) {
       else console.log(`${c.bold}${state.theme}@${state.themeVersion || "unknown"}${c.reset} · ${state.profile}\n${c.dim}${state.config}\nApplied ${state.appliedAt}${c.reset}`);
       break;
     }
+    case "install-themes": {
+      const result = installGhosttyThemes();
+      console.log(`${c.green}✓${c.reset} Published ${c.bold}${result.installed.length}${c.reset} themes to Ghostty's own theme directory.`);
+      console.log(`${c.dim}${result.directory}${c.reset}`);
+      console.log(`\nGhostty now lists them: ${c.bold}ghostty +list-themes${c.reset}`);
+      console.log(`Select one by hand with: ${c.bold}theme = ${result.installed[0].name}${c.reset}`);
+      console.log(`${c.dim}Or a pair that follows the system: theme = light:<one>,dark:<another>${c.reset}`);
+      break;
+    }
     case "update": await update(options); break;
     case "version":
     case "--version":
@@ -306,6 +316,10 @@ export async function run(argv) {
     case "uninstall": {
       const result = uninstallGhostty();
       console.log(result.changed ? `${c.green}✓${c.reset} Removed the managed block. Backup: ${result.backupFile}` : "Nothing to remove.");
+      const themes = uninstallGhosttyThemes();
+      if (themes.removed.length > 0) {
+        console.log(`${c.green}✓${c.reset} Removed ${themes.removed.length} published themes from ${c.dim}${themes.directory}${c.reset}`);
+      }
       break;
     }
     default: throw new Error(`Unknown command "${command}". Run \"termdeck help\".`);
