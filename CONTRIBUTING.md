@@ -9,6 +9,8 @@ New palettes, exporters, accessibility improvements, and terminal-specific profi
 
 Themes must include 16 ANSI colors, use six-digit hex values, and remain readable against their background. Artwork must be original or carry an explicit redistributable license; include its provenance in the pull request and in an adjacent notice file.
 
+A Special Edition is a Core theme with different artwork terms. It is not a lesser tier: every feature reaches both, and no code outside the catalog's own grouping and validation may branch on `category`. `test/parity.test.js` enforces this — Ghostty colour surfaces, the dock icon, the managed block, publication to Ghostty's theme list, and all seven export targets are each asserted identical across categories.
+
 Please keep generated exports out of commits. They belong in the ignored `dist/` directory.
 
 ## Granitic commits
