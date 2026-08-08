@@ -4,6 +4,8 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-08
+
 ### Removed
 
 - **Breaking:** the Apple Terminal and WezTerm export targets. `termdeck export --target terminal` and `--target wezterm` now fail with the list of remaining targets. Apple Terminal's package was the only one that fabricated another platform's binary serialization by hand, and installing it would have meant writing into `com.apple.Terminal`'s preference domain. WezTerm is configured in Lua, by hand, by people who want a module to `require` rather than a file left in a directory; serving that well is a different feature. Five terminals remain, and all five are now configured automatically.
@@ -118,6 +120,7 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 - Initial Ghostty theme engine.
 - Added seven palettes, four working profiles, safe config management, and five export targets.
 
+[0.6.0]: https://github.com/iCosiSenpai/termdeck/releases/tag/v0.6.0
 [0.5.5]: https://github.com/iCosiSenpai/termdeck/releases/tag/v0.5.5
 [0.5.0]: https://github.com/iCosiSenpai/termdeck/releases/tag/v0.5.0
 [0.4.0]: https://github.com/iCosiSenpai/termdeck/releases/tag/v0.4.0

@@ -323,7 +323,7 @@ npm run check
 
 ## Project
 
-- **Release:** [v0.5.5](https://github.com/iCosiSenpai/termdeck/releases/tag/v0.5.5)
+- **Release:** [v0.6.0](https://github.com/iCosiSenpai/termdeck/releases/tag/v0.6.0)
 - **Repository:** [github.com/iCosiSenpai/termdeck](https://github.com/iCosiSenpai/termdeck)
 - **Homebrew tap:** [github.com/iCosiSenpai/homebrew-tap](https://github.com/iCosiSenpai/homebrew-tap)
 - **Author:** [github.com/iCosiSenpai](https://github.com/iCosiSenpai)
