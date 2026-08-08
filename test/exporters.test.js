@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getTheme } from "../src/catalog.js";
-import { exportTheme, targets } from "../src/exporters.js";
+import { getTheme, loadThemes } from "../src/catalog.js";
+import { exportTheme, ghostty, targets } from "../src/exporters.js";
 
 const theme = getTheme("nordic-aurora");
 
@@ -18,6 +18,42 @@ test("Ghostty output includes all palette slots", () => {
   assert.match(output, /background-image = /);
   assert.match(output, /window-padding-x = 14/);
   assert.doesNotMatch(output, /^font-size\s*=/m);
+});
+
+test("the Ghostty theme colours every surface Ghostty exposes, not just the sixteen", () => {
+  // Left unset, each of these keeps a Ghostty default that looks the same under
+  // every theme in the deck.
+  const surfaces = [
+    ["cursor-text", (item) => item.background],
+    ["split-divider-color", (item) => item.palette[8]],
+    ["search-foreground", (item) => item.background],
+    ["search-background", (item) => item.palette[3]],
+    ["search-selected-foreground", (item) => item.background],
+    ["search-selected-background", (item) => item.cursor],
+  ];
+
+  for (const item of loadThemes()) {
+    const output = ghostty(item, { full: false });
+    for (const [option, expected] of surfaces) {
+      assert.match(
+        output,
+        new RegExp(`^${option} = ${expected(item)}$`, "mi"),
+        `${item.slug} does not colour ${option}`,
+      );
+    }
+    // Every value Ghostty will read as a colour has to be one.
+    for (const line of output.split("\n")) {
+      const value = line.match(/^(?:\w[\w-]*color|background|foreground|cursor-text|search-\w+|selection-\w+) = (.+)$/)?.[1];
+      if (value) assert.match(value, /^#[0-9a-f]{6}$/i, `${item.slug}: ${line}`);
+    }
+  }
+
+  // The search highlight has to stay readable: dark text on a light highlight.
+  const luminance = (hex) => [1, 3, 5].reduce((total, index, channel) => total + Number.parseInt(hex.slice(index, index + 2), 16) * [0.299, 0.587, 0.114][channel], 0);
+  for (const item of loadThemes()) {
+    assert.ok(luminance(item.palette[3]) > luminance(item.background) + 60, `${item.slug}: search highlight is not lighter than its text`);
+    assert.ok(luminance(item.cursor) > luminance(item.background) + 60, `${item.slug}: selected match is not lighter than its text`);
+  }
 });
 
 test("iTerm output is a full Dynamic Profile", () => {

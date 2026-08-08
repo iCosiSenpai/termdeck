@@ -42,8 +42,22 @@ export function ghostty(theme, options = {}) {
     `background = ${theme.background}`,
     `foreground = ${theme.foreground}`,
     `cursor-color = ${theme.cursor}`,
+    // The character under a block cursor, which is otherwise left to a default
+    // that can sit unreadably close to the accent the cursor is painted in.
+    `cursor-text = ${theme.background}`,
     `selection-background = ${theme.selectionBackground}`,
     `selection-foreground = ${theme.selectionForeground || theme.foreground}`,
+    // Ghostty colours more than the classic sixteen. Left unset, these keep
+    // their defaults — a grey divider and a golden-yellow search highlight —
+    // which look identical whichever theme is applied. The slots reused here are
+    // the same ones every other exporter already uses for the same purposes: the
+    // bright black as the border tone, the yellow as the highlight, the accent
+    // for whatever the reader is looking for right now.
+    `split-divider-color = ${theme.palette[8]}`,
+    `search-foreground = ${theme.background}`,
+    `search-background = ${theme.palette[3]}`,
+    `search-selected-foreground = ${theme.background}`,
+    `search-selected-background = ${theme.cursor}`,
   ];
   theme.palette.forEach((color, index) => lines.push(`palette = ${index}=${color}`));
   if (options.full !== false) {
