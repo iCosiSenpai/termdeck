@@ -11,6 +11,7 @@ import {
   installForTerminal,
   installTargets,
   installers,
+  isExclusive,
   readManifest,
   uninstallFromTerminal,
 } from "../src/terminals.js";
@@ -233,4 +234,11 @@ test("a reader who already declares [general] is handed the line instead of losi
   fs.writeFileSync(conf, 'import = ["other.toml"]\n');
   assert.throws(() => installForTerminal({ theme, target: "alacritty", env, platform: "linux", detect: present }), /already declares/);
   remove();
+});
+
+test("a terminal that reads one file has nothing to do with the whole catalog", () => {
+  assert.equal(isExclusive("kitty"), true, "an include points at one file");
+  assert.equal(isExclusive("alacritty"), true, "so does an import");
+  assert.equal(isExclusive("iterm2"), false, "a Dynamic Profiles directory holds as many as you like");
+  assert.equal(isExclusive("warp"), false, "and so does a theme picker");
 });

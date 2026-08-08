@@ -10,6 +10,7 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 
 ### Termdeck
 
+- Folded `install-themes` into `install`, which now has one meaning across every terminal: making a theme available. `termdeck install --all --target ghostty` publishes the catalog to Ghostty's theme list, `--all --target iterm2|warp` fills a theme picker, and `--all` is refused for Kitty and Alacritty because a single `include` or `import` can only point at one theme. `apply` remains the verb that activates one.
 - Completed the set with `termdeck install <theme> --target alacritty`. TOML forbids declaring a table twice, so when an `alacritty.toml` already declares `[general]` or an `import`, Termdeck writes the theme, leaves the configuration untouched, and hands over the single line to add — pointing at a fixed path, so it is only ever added once.
 
 - Added `termdeck install <theme> --target iterm2|warp|kitty`, which puts the generated package where that terminal reads it instead of leaving it in `./dist/` with instructions. Every file written is recorded in `installs.json`, so `termdeck uninstall --target NAME` takes back exactly those rather than guessing from a naming convention. Kitty's `include` goes inside a marked block with a backup taken first, the way the Ghostty integration already works, and a terminal that is not installed is reported rather than having a configuration directory created for it.

@@ -152,10 +152,10 @@ termdeck apply tokyo-midnight --no-icon  # back to the official icon
 
 Opt-in, remembered, and macOS-only — asked for anywhere else it writes nothing and says so. A theme can declare its own `icon` with a frame (`aluminum`, `beige`, `plastic`, `chrome`), a ghost colour, and up to sixty-four gradient stops.
 
-**The catalog can live in Ghostty's own theme list.** `termdeck install-themes` publishes all eight where Ghostty looks for user themes, so they appear in `ghostty +list-themes` marked `(user)` and can be selected without Termdeck in the loop:
+**The catalog can live in Ghostty's own theme list.** `termdeck install --all --target ghostty` publishes all eight where Ghostty looks for user themes, so they appear in `ghostty +list-themes` marked `(user)` and can be selected without Termdeck in the loop:
 
 ```sh
-termdeck install-themes
+termdeck install --all --target ghostty
 ghostty +list-themes | grep Termdeck
 ```
 
@@ -217,8 +217,11 @@ termdeck install tokyo-midnight --target iterm2 --profile glass
 termdeck install nordic-aurora --target warp
 termdeck install ember-forge --target kitty
 termdeck install carbon-mono --target alacritty
+termdeck install --all --target warp        # every theme, for a terminal with a picker
 termdeck uninstall --target kitty
 ```
+
+One verb, two halves: **install** makes a theme available to a terminal, **apply** activates it in Ghostty. `--all` installs the whole catalog, and is refused for Kitty and Alacritty because a single `include` or `import` can only point at one theme.
 
 Termdeck keeps a receipt of every file it wrote, at `~/.config/termdeck/installs.json`, so uninstalling removes exactly those and never guesses from a naming convention. Where a terminal needs a line adding to a configuration file you own — Kitty's `include` — it goes inside a marked block with a timestamped backup taken first, exactly as the Ghostty integration works. A terminal that is not installed is reported rather than having a configuration directory created for it.
 

@@ -8,7 +8,7 @@ import { writeThemeExport } from "./export-package.js";
 import { capabilityLabels, terminalCapabilities } from "./capabilities.js";
 import { applyGhostty, detectGhostty, ghosttyIcon, installGhosttyThemes, readState, reloadGhostty, resolvePaths, uninstallGhostty, uninstallGhosttyThemes, validateGhosttyConfig } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
-import { installForTerminal, installTargets, uninstallFromTerminal } from "./terminals.js";
+import { installForTerminal, installTargets, installers, isExclusive, uninstallFromTerminal } from "./terminals.js";
 import { openDashboard } from "./dashboard.js";
 import { checkUpdates, refreshCommand, runUpgrade } from "./updates.js";
 import { createPalette, detectDepth } from "./ui/ansi.js";
@@ -47,8 +47,8 @@ Usage:
   termdeck capabilities
   termdeck profiles
   termdeck status
-  termdeck install <theme> --target iterm2|warp|kitty|alacritty [--profile NAME]
-  termdeck install-themes
+  termdeck install <theme> --target ghostty|iterm2|warp|kitty|alacritty [--profile NAME]
+  termdeck install --all --target ghostty|iterm2|warp
   termdeck update [--yes]
   termdeck version
   termdeck doctor
@@ -58,6 +58,7 @@ Examples:
   termdeck apply tokyo-midnight --profile glass
   termdeck apply resonant-rover --profile cozy --font "JetBrainsMono Nerd Font"
   termdeck apply ember-forge --icon        # paint the macOS dock icon to match
+  termdeck install --all --target ghostty   # the whole catalog in Ghostty's own theme list
   termdeck export nordic-aurora --target kitty --profile glass`);
 }
 
@@ -319,30 +320,44 @@ export async function run(argv) {
       break;
     }
     case "install": {
-      const theme = getTheme(positional[0]);
       const target = optionValue(options, "target", null);
-      if (!target) throw new Error(`--target is required. Choose: ${installTargets.join(", ")}.`);
+      if (!target) throw new Error(`--target is required. Choose: ghostty, ${installTargets.join(", ")}.`);
+      const everything = flag(options, "all");
       const profileName = optionValue(options, "profile", "cozy");
-      const result = installForTerminal({ theme, target, profileName });
-      console.log(`${c.green}✓${c.reset} Installed ${c.bold}${theme.name}${c.reset} for ${terminalCapabilities[target].name} with the ${profileName} profile.`);
-      console.log(`${c.dim}${result.output}${c.reset}`);
-      if (result.wallpaperFile) console.log(`${c.dim}${result.wallpaperFile}${c.reset}`);
-      for (const file of result.superseded) console.log(`${c.dim}Replaced: ${file}${c.reset}`);
-      if (result.wiring) {
-        console.log(`${c.green}✓${c.reset} Added the managed include to ${c.dim}${result.wiring.file}${c.reset}`);
-        if (result.wiring.backupFile) console.log(`${c.dim}Backup: ${result.wiring.backupFile}${c.reset}`);
+
+      // Ghostty is applied, not installed — installing into it means publishing to
+      // the theme list it already has, so its own picker can reach the catalog.
+      if (target === "ghostty") {
+        const themes = everything ? loadThemes() : [getTheme(positional[0])];
+        const result = installGhosttyThemes({ themes });
+        console.log(`${c.green}✓${c.reset} Published ${c.bold}${result.installed.length}${c.reset} ${result.installed.length === 1 ? "theme" : "themes"} to Ghostty's own theme list.`);
+        console.log(`${c.dim}${result.directory}${c.reset}`);
+        console.log(`\nGhostty lists them with ${c.bold}ghostty +list-themes${c.reset}, and one can be chosen by hand:`);
+        console.log(`  ${c.bold}theme = ${result.installed[0].name}${c.reset}`);
+        console.log(`${c.dim}Or as a pair that follows the system: theme = light:<one>,dark:<another>${c.reset}`);
+        console.log(`${c.dim}Activate one with: termdeck apply ${result.installed[0].slug}${c.reset}`);
+        break;
       }
-      console.log(`${result.next}`);
+
+      if (everything && isExclusive(target)) {
+        throw new Error(`${terminalCapabilities[target].name} reads one theme file, so --all has nothing to mean there. Install the one you want.`);
+      }
+
+      const chosen = everything ? loadThemes() : [getTheme(positional[0])];
+      for (const theme of chosen) {
+        const result = installForTerminal({ theme, target, profileName });
+        console.log(`${c.green}✓${c.reset} Installed ${c.bold}${theme.name}${c.reset} for ${terminalCapabilities[target].name} with the ${profileName} profile.`);
+        console.log(`${c.dim}${result.output}${c.reset}`);
+        if (result.wallpaperFile) console.log(`${c.dim}${result.wallpaperFile}${c.reset}`);
+        for (const file of result.superseded) console.log(`${c.dim}Replaced: ${file}${c.reset}`);
+        if (result.wiring) {
+          console.log(`${c.green}✓${c.reset} Added the managed line to ${c.dim}${result.wiring.file}${c.reset}`);
+          if (result.wiring.backupFile) console.log(`${c.dim}Backup: ${result.wiring.backupFile}${c.reset}`);
+        }
+        if (chosen.length === 1) console.log(result.next);
+      }
+      if (chosen.length > 1) console.log(`\n${installers[target].next}`);
       console.log(`${c.dim}Take it back with: termdeck uninstall --target ${target}${c.reset}`);
-      break;
-    }
-    case "install-themes": {
-      const result = installGhosttyThemes();
-      console.log(`${c.green}✓${c.reset} Published ${c.bold}${result.installed.length}${c.reset} themes to Ghostty's own theme directory.`);
-      console.log(`${c.dim}${result.directory}${c.reset}`);
-      console.log(`\nGhostty now lists them: ${c.bold}ghostty +list-themes${c.reset}`);
-      console.log(`Select one by hand with: ${c.bold}theme = ${result.installed[0].name}${c.reset}`);
-      console.log(`${c.dim}Or a pair that follows the system: theme = light:<one>,dark:<another>${c.reset}`);
       break;
     }
     case "update": await update(options); break;

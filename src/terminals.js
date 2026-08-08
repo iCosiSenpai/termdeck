@@ -110,6 +110,9 @@ export const installers = {
 
 export const installTargets = Object.keys(installers);
 
+/** A terminal pointed at one file by a line in a config reads one theme at a time. */
+export const isExclusive = (target) => Boolean(installers[target]?.wiring);
+
 /**
  * The file name Termdeck writes. Prefixed so a receipt is not the only record, and
  * fixed where a terminal is pointed at it by a line the reader may have to write
