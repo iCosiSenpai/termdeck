@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { getTheme, loadThemes } from "../src/catalog.js";
-import { applyGhostty, detectGhostty, END_MARKER, ghosttyThemeDir, ghosttyThemeName, installGhosttyThemes, reloadGhostty, replaceManagedBlock, START_MARKER, uninstallGhostty, uninstallGhosttyThemes, validateGhosttyConfig } from "../src/ghostty.js";
+import { applyGhostty, detectGhostty, END_MARKER, ghosttyIcon, ghosttyThemeDir, ghosttyThemeName, installGhosttyThemes, reloadGhostty, replaceManagedBlock, START_MARKER, uninstallGhostty, uninstallGhosttyThemes, validateGhosttyConfig } from "../src/ghostty.js";
 import { ghostty } from "../src/exporters.js";
 import { getProfile } from "../src/profiles.js";
 
@@ -240,6 +240,44 @@ test("the catalog is published where Ghostty looks for the reader's own themes",
   assert.deepEqual(fs.readdirSync(result.directory), ["My Own Theme"], "the reader's own theme is left alone");
 
   assert.deepEqual(uninstallGhosttyThemes({ HOME: root, XDG_CONFIG_HOME: path.join(root, "absent") }).removed, [], "nothing to remove is not an error");
+
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+
+test("the dock icon is painted from the theme, and only where macOS can show it", () => {
+  const theme = getTheme("tokyo-midnight");
+
+  const derived = ghosttyIcon(theme);
+  assert.equal(derived.ghost, theme.cursor, "the ghost takes the accent, the colour that differs most between themes");
+  assert.deepEqual(derived.screen, [theme.background, theme.selectionBackground], "the screen reads as a window running the theme");
+  assert.equal(derived.frame, "aluminum", "Ghostty requires a frame to be named, so one always is");
+
+  const declared = ghosttyIcon({ ...theme, icon: { frame: "beige", ghost: "#ff0000", screen: ["#111111", "#222222"] } });
+  assert.deepEqual(declared, { frame: "beige", ghost: "#ff0000", screen: ["#111111", "#222222"] }, "a theme may paint its own");
+  assert.equal(ghosttyIcon({ ...theme, icon: { frame: "gold-plated" } }).frame, "aluminum", "a frame Ghostty does not know is not passed on");
+  assert.equal(ghosttyIcon({ ...theme, icon: { screen: new Array(80).fill("#000000") } }).screen.length, 64, "Ghostty takes sixty-four stops at most");
+
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "termdeck-icon-"));
+  const config = path.join(root, "ghostty", "config");
+  const env = { ...process.env, HOME: root, TERMDECK_HOME: path.join(root, "termdeck"), TERMDECK_GHOSTTY_CONFIG: config };
+  const applied = { theme, profile: getProfile("cozy"), profileName: "cozy", env };
+
+  const painted = applyGhostty({ ...applied, icon: true, platform: "darwin" });
+  assert.equal(painted.icon, true);
+  const withIcon = fs.readFileSync(config, "utf8");
+  assert.match(withIcon, /^macos-icon = custom-style$/m);
+  assert.match(withIcon, /^macos-icon-frame = aluminum$/m);
+  assert.match(withIcon, new RegExp(`^macos-icon-ghost-color = ${theme.cursor}$`, "m"));
+  assert.match(withIcon, new RegExp(`^macos-icon-screen-color = ${theme.background},${theme.selectionBackground}$`, "m"));
+  assert.equal(JSON.parse(fs.readFileSync(path.join(root, "termdeck", "state.json"), "utf8")).icon, true, "the choice is remembered");
+
+  const elsewhere = applyGhostty({ ...applied, icon: true, platform: "linux" });
+  assert.equal(elsewhere.icon, false);
+  assert.doesNotMatch(fs.readFileSync(config, "utf8"), /macos-icon/, "asking for it off macOS writes nothing rather than a no-op");
+
+  applyGhostty({ ...applied, icon: false, platform: "darwin" });
+  assert.doesNotMatch(fs.readFileSync(config, "utf8"), /macos-icon/, "and turning it off takes it back out");
 
   fs.rmSync(root, { recursive: true, force: true });
 });

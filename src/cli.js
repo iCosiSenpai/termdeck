@@ -6,7 +6,7 @@ import { getTheme, loadThemes, packageMetadata, pickRandomTheme } from "./catalo
 import { defaultOutput, targets } from "./exporters.js";
 import { writeThemeExport } from "./export-package.js";
 import { capabilityLabels, terminalCapabilities } from "./capabilities.js";
-import { applyGhostty, detectGhostty, installGhosttyThemes, readState, reloadGhostty, resolvePaths, uninstallGhostty, uninstallGhosttyThemes, validateGhosttyConfig } from "./ghostty.js";
+import { applyGhostty, detectGhostty, ghosttyIcon, installGhosttyThemes, readState, reloadGhostty, resolvePaths, uninstallGhostty, uninstallGhosttyThemes, validateGhosttyConfig } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
 import { openDashboard } from "./dashboard.js";
 import { checkUpdates, refreshCommand, runUpgrade } from "./updates.js";
@@ -39,7 +39,7 @@ Usage:
   termdeck                         Open the interactive control center
   termdeck list
   termdeck preview [theme]
-  termdeck apply <theme> [--profile cozy|focus|glass|presentation] [--font NAME]
+  termdeck apply <theme> [--profile cozy|focus|glass|presentation] [--font NAME] [--icon]
   termdeck cycle [--profile NAME]
   termdeck random [--profile NAME]
   termdeck export <theme> --target ${targets.join("|")} [--profile NAME] [--output PATH]
@@ -55,6 +55,7 @@ Usage:
 Examples:
   termdeck apply tokyo-midnight --profile glass
   termdeck apply resonant-rover --profile cozy --font "JetBrainsMono Nerd Font"
+  termdeck apply ember-forge --icon        # paint the macOS dock icon to match
   termdeck export nordic-aurora --target wezterm --profile glass`);
 }
 
@@ -87,6 +88,13 @@ function optionValue(options, key, fallback) {
 
 function flag(options, key) {
   return options[key] === true || /^(1|y|yes|true)$/i.test(String(options[key] ?? ""));
+}
+
+/** A `--thing` / `--no-thing` pair, falling back to what was chosen last time. */
+function toggle(options, key, fallback) {
+  if (options[key] !== undefined) return flag(options, key);
+  if (options[`no-${key}`] !== undefined) return false;
+  return fallback;
 }
 
 /** Everything the check found, stated before anything is asked or executed. */
@@ -178,6 +186,10 @@ function apply(themeSlug, options) {
   const profile = getProfile(profileName);
   const ghostty = detectGhostty();
 
+  // The dock icon is remembered, so re-applying a theme keeps whichever answer
+  // was given last rather than quietly reverting to the official icon.
+  const icon = toggle(options, "icon", Boolean(readState()?.icon));
+
   // applyGhostty refuses before it touches the reader's file, so a rejection
   // arrives as an error with Ghostty's own diagnostic and nothing to undo.
   const result = applyGhostty({
@@ -185,12 +197,19 @@ function apply(themeSlug, options) {
     profile,
     profileName,
     font: optionValue(options, "font", null),
+    icon,
     validate: ghostty.installed ? ({ file }) => validateGhosttyConfig({ file, ghostty }) : null,
   });
 
   console.log(`${c.green}✓${c.reset} Applied ${c.bold}${theme.name}${c.reset} with the ${profileName} profile.`);
   console.log(`${c.dim}${result.config}${c.reset}`);
   if (result.backupFile) console.log(`${c.dim}Backup: ${result.backupFile}${c.reset}`);
+  if (result.icon) {
+    const painted = ghosttyIcon(theme);
+    console.log(`${c.green}✓${c.reset} Dock icon painted ${swatch(painted.ghost)} ${c.dim}${painted.ghost} on ${painted.frame}${c.reset}`);
+  } else if (icon) {
+    console.log(`${c.yellow}!${c.reset} The Ghostty dock icon is a macOS feature; nothing was written for it here.`);
+  }
 
   // Writing a configuration no installed terminal reads is not a success worth
   // reporting quietly. Say so, and point at the way these themes reach the
@@ -294,7 +313,7 @@ export async function run(argv) {
     case "status": {
       const state = readState();
       if (!state) console.log("No Termdeck theme is currently managed.");
-      else console.log(`${c.bold}${state.theme}@${state.themeVersion || "unknown"}${c.reset} · ${state.profile}\n${c.dim}${state.config}\nApplied ${state.appliedAt}${c.reset}`);
+      else console.log(`${c.bold}${state.theme}@${state.themeVersion || "unknown"}${c.reset} · ${state.profile}${state.icon ? " · themed dock icon" : ""}\n${c.dim}${state.config}\nApplied ${state.appliedAt}${c.reset}`);
       break;
     }
     case "install-themes": {

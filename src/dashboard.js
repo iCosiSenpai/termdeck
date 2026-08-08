@@ -627,7 +627,7 @@ export function openDashboard({ input = process.stdin, output = process.stdout, 
       const theme = visible[themeIndex];
       const profileName = names[profileIndex];
       try {
-        applyGhostty({ theme, profile: getProfile(profileName), profileName, font: active?.font || null, validate });
+        applyGhostty({ theme, profile: getProfile(profileName), profileName, font: active?.font || null, icon: Boolean(active?.icon), validate });
         active = readState();
         // Reloading a terminal that is not installed is not worth a subprocess,
         // and reporting plain success would be a lie.
@@ -671,7 +671,7 @@ export function openDashboard({ input = process.stdin, output = process.stdout, 
         for (const entry of pending) {
           const theme = themes.find((candidate) => candidate.slug === entry.slug);
           if (!theme) continue;
-          applyGhostty({ theme, profile: getProfile(entry.profile), profileName: entry.profile, font: entry.font, validate });
+          applyGhostty({ theme, profile: getProfile(entry.profile), profileName: entry.profile, font: entry.font, icon: Boolean(active?.icon), validate });
         }
         const outcome = reload();
         active = readState();

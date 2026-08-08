@@ -53,7 +53,31 @@ function backup(file) {
   return destination;
 }
 
-export function buildManagedBlock({ themeFile, theme, profile, profileName, font, wallpaperFile }) {
+/**
+ * The Ghostty dock icon, painted in the theme's own colours. The ghost takes the
+ * accent — the one colour that differs sharply from theme to theme — and the
+ * screen is a gradient from the terminal background up to its selection tone, so
+ * the icon reads as a small window running that theme.
+ *
+ * A theme may declare its own `icon` instead. The frame is always named because
+ * Ghostty requires one when the style is custom, and defaults to the aluminium
+ * of the official icon.
+ */
+export function ghosttyIcon(theme) {
+  const declared = theme.icon || {};
+  const frames = ["aluminum", "beige", "plastic", "chrome"];
+  const screen = Array.isArray(declared.screen) && declared.screen.length > 0
+    ? declared.screen
+    : [theme.background, theme.selectionBackground];
+  return {
+    frame: frames.includes(declared.frame) ? declared.frame : "aluminum",
+    ghost: declared.ghost || theme.cursor,
+    // Ghostty accepts up to sixty-four gradient stops.
+    screen: screen.slice(0, 64),
+  };
+}
+
+export function buildManagedBlock({ themeFile, theme, profile, profileName, font, wallpaperFile, icon = false }) {
   const lines = [
     START_MARKER,
     `# theme: ${theme.name} v${theme.version} | profile: ${profileName}`,
@@ -68,11 +92,20 @@ export function buildManagedBlock({ themeFile, theme, profile, profileName, font
     lines.push("background-image-position = center");
     lines.push("background-image-repeat = false");
   }
+  if (icon) {
+    const painted = ghosttyIcon(theme);
+    lines.push(
+      "macos-icon = custom-style",
+      `macos-icon-frame = ${painted.frame}`,
+      `macos-icon-ghost-color = ${painted.ghost}`,
+      `macos-icon-screen-color = ${painted.screen.join(",")}`,
+    );
+  }
   lines.push(END_MARKER);
   return lines.join("\n");
 }
 
-export function applyGhostty({ theme, profile, profileName, font, env = process.env, validate = null }) {
+export function applyGhostty({ theme, profile, profileName, font, env = process.env, platform = process.platform, icon = false, validate = null }) {
   const paths = resolvePaths(env);
   fs.mkdirSync(path.dirname(paths.config), { recursive: true });
   fs.mkdirSync(paths.themeDir, { recursive: true });
@@ -88,7 +121,9 @@ export function applyGhostty({ theme, profile, profileName, font, env = process.
     fs.copyFileSync(source, wallpaperFile);
   }
 
-  const block = buildManagedBlock({ themeFile, theme, profile, profileName, font, wallpaperFile });
+  // The dock icon is a macOS feature, so asking for it elsewhere writes nothing.
+  const paintIcon = Boolean(icon) && platform === "darwin";
+  const block = buildManagedBlock({ themeFile, theme, profile, profileName, font, wallpaperFile, icon: paintIcon });
 
   // Ask Ghostty about the block on its own, before the reader's configuration is
   // touched at all. Validating the merged file instead would blame Termdeck for
@@ -111,9 +146,9 @@ export function applyGhostty({ theme, profile, profileName, font, env = process.
   fs.writeFileSync(paths.config, replaceManagedBlock(existing, block));
   fs.writeFileSync(
     paths.state,
-    `${JSON.stringify({ theme: theme.slug, themeVersion: theme.version, profile: profileName, font: font || null, appliedAt: new Date().toISOString(), config: paths.config }, null, 2)}\n`,
+    `${JSON.stringify({ theme: theme.slug, themeVersion: theme.version, profile: profileName, font: font || null, icon: paintIcon, appliedAt: new Date().toISOString(), config: paths.config }, null, 2)}\n`,
   );
-  return { ...paths, themeFile, wallpaperFile, backupFile };
+  return { ...paths, themeFile, wallpaperFile, backupFile, icon: paintIcon };
 }
 
 /** The executable inside a detected installation, bundle or bare binary. */
