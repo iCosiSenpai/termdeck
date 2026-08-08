@@ -103,6 +103,7 @@ test("without Ghostty the deck stops promising that ENTER changes anything", asy
       output,
       ghostty: false,
       reload: () => assert.fail("a terminal that is not installed is not reloaded"),
+      validate: () => ({ checked: false, valid: true, problems: [] }),
     });
     output.flush();
 
@@ -526,6 +527,7 @@ test("confirming a theme refresh rewrites the managed Ghostty block in place", a
       output,
       checkForUpdates: async () => updates,
       reload: () => ({ reloaded: true, reason: null }),
+      validate: () => ({ checked: true, valid: true, problems: [] }),
     });
     await new Promise((resolve) => setImmediate(resolve));
     output.flush();
@@ -540,6 +542,29 @@ test("confirming a theme refresh rewrites the managed Ghostty block in place", a
       new RegExp(`theme: ${theme.name} v${theme.version} \\| profile: focus`),
       "the managed block now carries the current theme version",
     );
+
+    input.emit("keypress", "\u001b", { name: "escape" });
+    await closed;
+  });
+});
+
+test("a configuration Ghostty refuses is never written at all", async () => {
+  await withSandboxedHome(async ({ config }) => {
+    const { input, output } = fakeTerminal();
+    const closed = openDashboard({
+      input,
+      output,
+      reload: () => assert.fail("a rejected configuration is never reloaded"),
+      validate: () => ({ checked: true, valid: false, problems: ["config:7:not-a-field: unknown field"] }),
+    });
+    output.flush();
+
+    input.emit("keypress", "\r", { name: "return" });
+    assert.match(
+      stripAnsi(output.flush()),
+      /! Ghostty rejected the generated configuration: config:7:not-a-field: unknown field/,
+    );
+    assert.equal(fs.existsSync(config), false, "the reader's configuration is never touched to find out");
 
     input.emit("keypress", "\u001b", { name: "escape" });
     await closed;

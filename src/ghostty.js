@@ -72,7 +72,7 @@ export function buildManagedBlock({ themeFile, theme, profile, profileName, font
   return lines.join("\n");
 }
 
-export function applyGhostty({ theme, profile, profileName, font, env = process.env }) {
+export function applyGhostty({ theme, profile, profileName, font, env = process.env, validate = null }) {
   const paths = resolvePaths(env);
   fs.mkdirSync(path.dirname(paths.config), { recursive: true });
   fs.mkdirSync(paths.themeDir, { recursive: true });
@@ -88,15 +88,61 @@ export function applyGhostty({ theme, profile, profileName, font, env = process.
     fs.copyFileSync(source, wallpaperFile);
   }
 
+  const block = buildManagedBlock({ themeFile, theme, profile, profileName, font, wallpaperFile });
+
+  // Ask Ghostty about the block on its own, before the reader's configuration is
+  // touched at all. Validating the merged file instead would blame Termdeck for
+  // any pre-existing mistake of the reader's, and undo a good change to atone.
+  if (validate) {
+    const preflight = path.join(paths.termdeckHome, "preflight.conf");
+    fs.writeFileSync(preflight, `${block}\n`);
+    try {
+      const outcome = validate({ file: preflight });
+      if (!outcome.valid) {
+        throw new Error(`Ghostty rejected the generated configuration: ${outcome.problems.join("; ")}`);
+      }
+    } finally {
+      fs.rmSync(preflight, { force: true });
+    }
+  }
+
   const existing = fs.existsSync(paths.config) ? fs.readFileSync(paths.config, "utf8") : "";
   const backupFile = existing ? backup(paths.config) : null;
-  const block = buildManagedBlock({ themeFile, theme, profile, profileName, font, wallpaperFile });
   fs.writeFileSync(paths.config, replaceManagedBlock(existing, block));
   fs.writeFileSync(
     paths.state,
     `${JSON.stringify({ theme: theme.slug, themeVersion: theme.version, profile: profileName, font: font || null, appliedAt: new Date().toISOString(), config: paths.config }, null, 2)}\n`,
   );
   return { ...paths, themeFile, wallpaperFile, backupFile };
+}
+
+/** The executable inside a detected installation, bundle or bare binary. */
+function ghosttyBinary(where) {
+  return where.endsWith(".app") ? path.join(where, "Contents", "MacOS", "ghostty") : where;
+}
+
+/**
+ * Asks Ghostty whether a configuration file is one it can read. Ghostty exits
+ * non-zero and prints a diagnostic per problem, so a rejection is both
+ * detectable and explainable rather than something the reader discovers when
+ * their terminal next starts.
+ *
+ * Reports `checked: false` when there is no Ghostty to ask, or no file to ask
+ * about, neither of which is the same as a pass.
+ */
+export function validateGhosttyConfig({ file, ghostty = detectGhostty(), run = execFileSync } = {}) {
+  if (!ghostty.installed || !fs.existsSync(file)) return { checked: false, valid: true, problems: [] };
+  try {
+    run(ghosttyBinary(ghostty.where), ["+validate-config", `--config-file=${file}`], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    return { checked: true, valid: true, problems: [] };
+  } catch (error) {
+    const output = `${error.stdout ?? ""}\n${error.stderr ?? ""}`;
+    const problems = output.split("\n").map((line) => line.trim()).filter(Boolean);
+    return { checked: true, valid: false, problems: problems.length > 0 ? problems : ["Ghostty rejected the configuration without saying why"] };
+  }
 }
 
 export function uninstallGhostty(env = process.env) {

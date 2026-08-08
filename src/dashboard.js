@@ -2,7 +2,7 @@ import readline from "node:readline";
 import { loadThemes, packageMetadata, pickRandomTheme } from "./catalog.js";
 import { defaultOutput, targets } from "./exporters.js";
 import { writeThemeExport } from "./export-package.js";
-import { applyGhostty, detectGhostty, readState, reloadGhostty, resolvePaths } from "./ghostty.js";
+import { applyGhostty, detectGhostty, readState, reloadGhostty, resolvePaths, validateGhosttyConfig } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
 import { dismissUpdate } from "./updates.js";
 import { createPalette, blend, crop, detectDepth, displayWidth, pad, tokens } from "./ui/ansi.js";
@@ -523,7 +523,7 @@ function attempt(action) {
   }
 }
 
-export function openDashboard({ input = process.stdin, output = process.stdout, checkForUpdates = null, reload = reloadGhostty, ghostty = detectGhostty().installed } = {}) {
+export function openDashboard({ input = process.stdin, output = process.stdout, checkForUpdates = null, reload = reloadGhostty, ghostty = detectGhostty().installed, validate = ghostty ? validateGhosttyConfig : null } = {}) {
   const themes = loadThemes();
   const names = Object.keys(profiles);
   let active = readState();
@@ -627,7 +627,7 @@ export function openDashboard({ input = process.stdin, output = process.stdout, 
       const theme = visible[themeIndex];
       const profileName = names[profileIndex];
       try {
-        applyGhostty({ theme, profile: getProfile(profileName), profileName, font: active?.font || null });
+        applyGhostty({ theme, profile: getProfile(profileName), profileName, font: active?.font || null, validate });
         active = readState();
         // Reloading a terminal that is not installed is not worth a subprocess,
         // and reporting plain success would be a lie.
@@ -671,7 +671,7 @@ export function openDashboard({ input = process.stdin, output = process.stdout, 
         for (const entry of pending) {
           const theme = themes.find((candidate) => candidate.slug === entry.slug);
           if (!theme) continue;
-          applyGhostty({ theme, profile: getProfile(entry.profile), profileName: entry.profile, font: entry.font });
+          applyGhostty({ theme, profile: getProfile(entry.profile), profileName: entry.profile, font: entry.font, validate });
         }
         const outcome = reload();
         active = readState();

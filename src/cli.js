@@ -6,7 +6,7 @@ import { getTheme, loadThemes, packageMetadata, pickRandomTheme } from "./catalo
 import { defaultOutput, targets } from "./exporters.js";
 import { writeThemeExport } from "./export-package.js";
 import { capabilityLabels, terminalCapabilities } from "./capabilities.js";
-import { applyGhostty, detectGhostty, readState, reloadGhostty, resolvePaths, uninstallGhostty } from "./ghostty.js";
+import { applyGhostty, detectGhostty, readState, reloadGhostty, resolvePaths, uninstallGhostty, validateGhosttyConfig } from "./ghostty.js";
 import { getProfile, profiles } from "./profiles.js";
 import { openDashboard } from "./dashboard.js";
 import { checkUpdates, refreshCommand, runUpgrade } from "./updates.js";
@@ -175,7 +175,18 @@ function apply(themeSlug, options) {
   const theme = getTheme(themeSlug);
   const profileName = optionValue(options, "profile", "cozy");
   const profile = getProfile(profileName);
-  const result = applyGhostty({ theme, profile, profileName, font: optionValue(options, "font", null) });
+  const ghostty = detectGhostty();
+
+  // applyGhostty refuses before it touches the reader's file, so a rejection
+  // arrives as an error with Ghostty's own diagnostic and nothing to undo.
+  const result = applyGhostty({
+    theme,
+    profile,
+    profileName,
+    font: optionValue(options, "font", null),
+    validate: ghostty.installed ? ({ file }) => validateGhosttyConfig({ file, ghostty }) : null,
+  });
+
   console.log(`${c.green}✓${c.reset} Applied ${c.bold}${theme.name}${c.reset} with the ${profileName} profile.`);
   console.log(`${c.dim}${result.config}${c.reset}`);
   if (result.backupFile) console.log(`${c.dim}Backup: ${result.backupFile}${c.reset}`);
@@ -183,10 +194,20 @@ function apply(themeSlug, options) {
   // Writing a configuration no installed terminal reads is not a success worth
   // reporting quietly. Say so, and point at the way these themes reach the
   // terminal that is actually running.
-  if (!detectGhostty().installed) {
+  if (!ghostty.installed) {
     console.log(`${c.yellow}!${c.reset} Ghostty is not installed, so nothing reads this file yet.`);
     console.log(`${c.dim}  Using another terminal? ${c.reset}termdeck export ${theme.slug} --target NAME${c.dim} — see termdeck capabilities${c.reset}`);
     return;
+  }
+
+  console.log(`${c.green}✓${c.reset} Ghostty accepted what Termdeck wrote.`);
+
+  // The rest of the file belongs to the reader. If it has problems of its own,
+  // that is worth saying and is never a reason to undo a good change.
+  const merged = validateGhosttyConfig({ file: result.config, ghostty });
+  if (!merged.valid) {
+    console.log(`${c.yellow}!${c.reset} Your configuration has problems outside the managed block:`);
+    for (const problem of merged.problems) console.log(`${c.dim}  ${problem}${c.reset}`);
   }
 
   const reload = reloadGhostty();
