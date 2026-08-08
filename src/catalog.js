@@ -42,7 +42,7 @@ export function getTheme(slug) {
     (candidate) => candidate.slug === normalized || candidate.name.toLowerCase() === normalized,
   );
   if (!theme) {
-    throw new Error(`Unknown theme "${slug}". Run \"termdeck list\" to see the catalog.`);
+    throw new Error(`Unknown theme "${slug}". Run "termdeck list" to see the catalog.`);
   }
   return theme;
 }

@@ -8,10 +8,11 @@
   },
   "scripts": {
     "test": "node --test",
-    "check": "node --check src/cli.js && node --check src/dashboard.js && node --check src/updates.js && node --check scripts/render-previews.js && node --check scripts/render-wallpaper-notice.js && node scripts/render-wallpaper-notice.js --check && node --test",
+    "check": "biome check . && node --check src/cli.js && node --check src/dashboard.js && node --check src/updates.js && node --check scripts/render-previews.js && node --check scripts/render-wallpaper-notice.js && node scripts/render-wallpaper-notice.js --check && node --test",
     "notices": "node scripts/render-wallpaper-notice.js",
     "previews": "node scripts/render-previews.js",
-    "start": "node ./bin/termdeck.js"
+    "start": "node ./bin/termdeck.js",
+    "lint": "biome check ."
   },
   "keywords": [
     "ghostty",
@@ -45,5 +46,8 @@
     "install.sh",
     "LICENSE",
     "README.md"
-  ]
+  ],
+  "devDependencies": {
+    "@biomejs/biome": "2.5.7"
+  }
 }

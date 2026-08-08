@@ -59,7 +59,7 @@ export function ghostty(theme, options = {}) {
     `search-selected-foreground = ${theme.background}`,
     `search-selected-background = ${theme.cursor}`,
   ];
-  theme.palette.forEach((color, index) => lines.push(`palette = ${index}=${color}`));
+  lines.push(...theme.palette.map((color, index) => `palette = ${index}=${color}`));
   if (options.full !== false) {
     lines.push(
       "",
@@ -105,7 +105,7 @@ export function kitty(theme, options = {}) {
     "draw_minimal_borders yes",
     "",
   ];
-  theme.palette.forEach((color, index) => lines.push(`color${index} ${color} # ${index > 7 ? "bright " : ""}${names[index % 8]}`));
+  lines.push(...theme.palette.map((color, index) => `color${index} ${color} # ${index > 7 ? "bright " : ""}${names[index % 8]}`));
   return `${lines.join("\n")}\n`;
 }
 

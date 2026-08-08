@@ -4,6 +4,10 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 
 ## [Unreleased]
 
+### Termdeck
+
+- Put a linter in front of `npm run check`, which until now verified syntax and behaviour but nothing in between. It found a shadowed global, three dead parameters, four `forEach` calls used as `map`, and a handful of pointless escapes — all now fixed. Biome is a development dependency and never reaches an installed copy; Termdeck still ships with no runtime dependencies.
+
 ## [0.5.5] - 2026-08-08
 
 ### Termdeck

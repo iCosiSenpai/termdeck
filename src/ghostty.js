@@ -39,7 +39,8 @@ export function removeManagedBlock(content) {
   const start = content.indexOf(START_MARKER);
   const end = content.indexOf(END_MARKER);
   if (start === -1 || end === -1 || end < start) return content;
-  return `${content.slice(0, start)}${content.slice(end + END_MARKER.length)}`.replace(/^\s+|\s+$/g, "") + "\n";
+  const remaining = `${content.slice(0, start)}${content.slice(end + END_MARKER.length)}`;
+  return `${remaining.replace(/^\s+|\s+$/g, "")}\n`;
 }
 
 function timestamp() {

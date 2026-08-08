@@ -205,7 +205,7 @@ test("the release feed is only trusted when it answers with a usable version", a
   );
 
   const release = await fetchLatestRelease({
-    fetchImpl: async (url, options) => {
+    fetchImpl: async (_url, options) => {
       assert.match(options.headers["user-agent"], /^termdeck\//);
       assert.ok(options.signal, "the request must be cancellable");
       return { ok: true, status: 200, json: async () => ({ tag_name: "v1.2.3" }) };
@@ -222,7 +222,7 @@ test("a slow feed is abandoned and a cancelled check stops immediately", async (
    * which means a fake request has to hold the loop itself or the loop drains
    * before the timeout it is supposed to lose to.
    */
-  const requestInFlight = (url, options) => new Promise((resolve, reject) => {
+  const requestInFlight = (_url, options) => new Promise((resolve, reject) => {
     const arrival = setTimeout(() => resolve({ ok: true, status: 200, json: async () => ({ tag_name: "v9.9.9" }) }), 1000);
     options.signal.addEventListener("abort", () => {
       clearTimeout(arrival);

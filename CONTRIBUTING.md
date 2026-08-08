@@ -3,9 +3,12 @@
 New palettes, exporters, accessibility improvements, and terminal-specific profiles are welcome.
 
 1. Fork and clone the repository.
-2. Create a theme JSON file or a focused code change.
-3. Run `npm run check`.
-4. Include a screenshot or ANSI preview when proposing visual changes.
+2. Run `npm install` — the only dependency is the linter, and it is development-only.
+3. Create a theme JSON file or a focused code change.
+4. Run `npm run check`.
+5. Include a screenshot or ANSI preview when proposing visual changes.
+
+`npm run check` lints, syntax-checks, verifies the generated wallpaper notice, and runs the test suite. Termdeck ships with **no runtime dependencies**, on purpose: the Homebrew formula and `install.sh` both install by copying files and symlinking a binary, with no `npm install` step, so a runtime dependency would break both. Development dependencies are welcome — they never reach an installed copy.
 
 Themes must include 16 ANSI colors, use six-digit hex values, and remain readable against their background. Artwork must be original or carry an explicit redistributable license; include its provenance in the pull request and in an adjacent notice file.
 

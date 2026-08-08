@@ -12,7 +12,7 @@ export const ESC = "\u001b[";
 export const RESET = `${ESC}0m`;
 
 /** CSI sequences (colour, cursor motion) and OSC strings (titles, hyperlinks). */
-const ANSI_PATTERN = /\u001b\[[0-9;?]*[ -\/]*[@-~]|\u001b\][\s\S]*?(?:\u0007|\u001b\\)/g;
+const ANSI_PATTERN = /\u001b\[[0-9;?]*[ -/]*[@-~]|\u001b\][\s\S]*?(?:\u0007|\u001b\\)/g;
 
 const graphemes = new Intl.Segmenter("en", { granularity: "grapheme" });
 

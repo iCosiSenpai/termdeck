@@ -70,8 +70,8 @@ function profileBar(palette, selected, width) {
   const label = `${muted}${bold}PROFILE${reset}  `;
   const full = names.map((name, index) => ` ${index + 1} ${name.toUpperCase()} `);
   const spelled = displayWidth(full.join(" ")) <= width - 9;
-  const chips = names.map((name, index) => {
-    const text = spelled || index === selected ? full[index] : ` ${index + 1} `;
+  const chips = full.map((label, index) => {
+    const text = spelled || index === selected ? label : ` ${index + 1} `;
     if (index !== selected) return `${panel}${muted}${text}${reset}`;
     const highlight = palette.colored ? `${palette.bg(tokens.cyan)}${ink}` : invert;
     return `${highlight}${bold}${text}${reset}`;
@@ -453,7 +453,7 @@ export function buildFrame({ themes, themeIndex, profileIndex, active, message, 
     if (row >= 1 && row <= height) frame[row - 1] = composeRow(width, segments);
   };
 
-  logoLines.forEach((line, index) => set(2 + index, [{ column: margin, value: line }]));
+  logoLines.forEach((line, index) => { set(2 + index, [{ column: margin, value: line }]); });
   set(creditsRow, [{ column: margin, value: `${dim}${crop(`${REPOSITORY}  ·  by ${AUTHOR}`, width - 6)}${reset}` }]);
   set(ruleRow, [{ column: margin, value: `${muted}${"─".repeat(Math.max(20, width - 6))}${reset}` }]);
 
@@ -475,7 +475,7 @@ export function buildFrame({ themes, themeIndex, profileIndex, active, message, 
   if (modal) {
     const boxColumn = Math.max(1, Math.floor((width - displayWidth(modal[0])) / 2) + 1);
     const boxTop = Math.max(1, Math.floor((height - modal.length) / 2) + 1);
-    modal.forEach((line, index) => set(boxTop + index, [{ column: boxColumn, value: line }]));
+    modal.forEach((line, index) => { set(boxTop + index, [{ column: boxColumn, value: line }]); });
   }
 
   return { rows: frame, width, height };

@@ -1,0 +1,29 @@
+{
+  "files": {
+    "includes": ["**/*.js", "**/*.json", "!dist", "!.build", "!package-lock.json"]
+  },
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "formatter": {
+    "enabled": false
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "suspicious": {
+        "noConsole": "off",
+        "noControlCharactersInRegex": "off"
+      },
+      "correctness": {
+        "noUnusedVariables": "error",
+        "noUnusedFunctionParameters": "error",
+        "noUnusedImports": "error"
+      },
+      "style": {
+        "noParameterAssign": "off",
+        "useBlockStatements": "off"
+      }
+    }
+  },
+  "assist": { "enabled": false }
+}

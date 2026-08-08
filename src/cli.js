@@ -280,7 +280,7 @@ export async function run(argv) {
       for (const target of targets) {
         const item = terminalCapabilities[target];
         const features = ["wallpaper", "opacity", "blur", "padding", "cursor", "decorations", "panes"]
-          .map((feature) => `${item[feature] ? c.green + "✓" : c.dim + "—"}${c.reset} ${feature}`)
+          .map((feature) => `${item[feature] ? `${c.green}✓` : `${c.dim}—`}${c.reset} ${feature}`)
           .join("  ");
         console.log(`${c.bold}${item.name.padEnd(16)}${c.reset} ${capabilityLabels[item.level]} · ${item.format}\n  ${features}`);
         if (item.note) console.log(`  ${c.dim}${item.note}${c.reset}`);
@@ -341,6 +341,6 @@ export async function run(argv) {
       }
       break;
     }
-    default: throw new Error(`Unknown command "${command}". Run \"termdeck help\".`);
+    default: throw new Error(`Unknown command "${command}". Run "termdeck help".`);
   }
 }
