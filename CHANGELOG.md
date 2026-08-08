@@ -4,6 +4,8 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-08
+
 ### Termdeck
 
 - Gave the theme every surface Ghostty colours, not only the classic sixteen: the character under the block cursor, the split divider, and both search highlights, which until now stayed black-on-golden-yellow under all eight themes.
@@ -97,6 +99,7 @@ Termdeck and its themes follow [Semantic Versioning](https://semver.org/). Appli
 - Initial Ghostty theme engine.
 - Added seven palettes, four working profiles, safe config management, and five export targets.
 
+[0.5.0]: https://github.com/iCosiSenpai/termdeck/releases/tag/v0.5.0
 [0.4.0]: https://github.com/iCosiSenpai/termdeck/releases/tag/v0.4.0
 [0.3.0]: https://github.com/iCosiSenpai/termdeck/releases/tag/v0.3.0
 [0.2.0]: https://github.com/iCosiSenpai/termdeck/releases/tag/v0.2.0
